@@ -13,10 +13,7 @@ document.addEventListener('alpine:init', () => {
         youtubeFeed: [],
 
         auth: {
-            username: null,
-            form: { username: '', password: '' },
-            mode: 'login',
-            error: ''
+            username: null
         },
         
         dashboardStats: {
@@ -175,6 +172,8 @@ document.addEventListener('alpine:init', () => {
         // QUEUE & JOBS
         // =====================================================================
         async addToQueue(type) {
+            if (!this.ensureAuthenticated()) return;
+
             const fd = new FormData();
             fd.append('type', type);
             
@@ -201,7 +200,8 @@ document.addEventListener('alpine:init', () => {
             this.ui.showAddModal = false;
             this.showQueueView();
 
-            await fetch('/api/queue/add', { method: 'POST', body: fd });
+            const res = await fetch('/api/queue/add', { method: 'POST', body: fd });
+            if (res.status === 401) return this.ensureAuthenticated();
 
             // UI Reset
             this.inputs.url = '';
@@ -572,59 +572,58 @@ document.addEventListener('alpine:init', () => {
                 if (res.ok) {
                     const data = await res.json();
                     if (data.ok) this.auth.username = data.username;
+                } else if (res.status === 401) {
+                    this.auth.username = null;
                 }
             } catch(e) {}
-        },
-        async submitAuth() {
-            const url = this.auth.mode === 'login' ? '/api/auth/login' : '/api/auth/register';
-            this.auth.error = '';
-            const res = await fetch(url, {
-                method: 'POST',
-                body: JSON.stringify(this.auth.form)
-            });
-            const data = await res.json();
-            if (res.ok && data.ok) {
-                this.auth.username = data.username;
-                this.auth.form = { username: '', password: '' };
-                this.showToast('Angemeldet', data.username, 'info');
-            } else {
-                this.auth.error = data.error || 'Fehler';
-            }
         },
         async logout() {
             await fetch('/api/auth/logout', { method: 'POST' });
             this.auth.username = null;
         },
+
+        ensureAuthenticated() {
+            if (this.auth.username) return true;
+            const next = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `/login?next=${next}`;
+            return false;
+        },
         
         async toggleLike(track) {
+            if (!this.ensureAuthenticated()) return;
+
             track.liked = !track.liked;
             // Update Local List
             if (this.currentView === 'likes' && !track.liked) {
                 this.likedTracks = this.likedTracks.filter(t => t.id !== track.id);
             }
             
-            await fetch(`/api/tracks/${track.id}/like`, { 
-                method: 'POST', 
-                body: JSON.stringify({liked: track.liked ? 1 : 0}) 
-            });
+            await fetch(`/api/tracks/${track.id}/like`, {
+                method: 'POST',
+                body: JSON.stringify({liked: track.liked ? 1 : 0})
+            }).then(res => { if (res.status === 401) this.ensureAuthenticated(); });
             
             if (this.currentView !== 'likes') this.fetchLikes();
         },
         
         async toggleFlag(track) {
+            if (!this.ensureAuthenticated()) return;
+
             const newFlag = track.flag === 3 ? 0 : 3;
             track.flag = newFlag;
             
-            await fetch(`/api/tracks/${track.id}/flag`, { 
-                method: 'POST', 
-                body: JSON.stringify({flag: newFlag}) 
-            });
+            await fetch(`/api/tracks/${track.id}/flag`, {
+                method: 'POST',
+                body: JSON.stringify({flag: newFlag})
+            }).then(res => { if (res.status === 401) this.ensureAuthenticated(); });
             this.fetchRescan();
         },
-        
+
         async runRescan() {
+            if (!this.ensureAuthenticated()) return;
+
             if(!confirm("Alle markierten Tracks neu verarbeiten?")) return;
-            await fetch('/api/tracks/rescan_run', { method: 'POST' });
+            await fetch('/api/tracks/rescan_run', { method: 'POST' }).then(res => { if (res.status === 401) this.ensureAuthenticated(); });
             this.fetchRescan();
         },
         

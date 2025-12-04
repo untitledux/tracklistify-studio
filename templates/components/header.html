@@ -75,13 +75,9 @@
                 </div>
             </template>
             <template x-if="!auth.username">
-                <div class="flex items-center gap-2">
-                    <input type="text" placeholder="Username" class="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring focus:ring-orange-200"
-                           x-model="auth.form.username">
-                    <input type="password" placeholder="Passwort" class="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring focus:ring-orange-200"
-                           x-model="auth.form.password">
-                    <button class="text-xs px-3 py-1 bg-orange-500 text-white rounded-lg" @click="submitAuth()" x-text="auth.mode === 'login' ? 'Login' : 'Registrieren'"></button>
-                    <button class="text-[10px] text-gray-500 underline" @click="auth.mode = auth.mode === 'login' ? 'register' : 'login'" x-text="auth.mode === 'login' ? 'Account anlegen' : 'Schon registriert?'"></button>
+                <div class="flex items-center gap-3">
+                    <a href="/login" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:text-orange-600 hover:border-orange-300">Login</a>
+                    <a href="/register" class="text-xs px-3 py-1.5 rounded-lg bg-orange-500 text-white hover:bg-orange-400">Registrieren</a>
                 </div>
             </template>
         </div>

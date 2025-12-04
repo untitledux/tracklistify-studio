@@ -1,6 +1,6 @@
 import os
 import json
-from flask import Flask, jsonify, request, render_template, send_from_directory, session
+from flask import Flask, jsonify, redirect, request, render_template, send_from_directory, session
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from functools import lru_cache
@@ -26,6 +26,20 @@ def cached_resolve_audio(query):
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/login")
+def login_page():
+    if "user_id" in session:
+        return redirect("/")
+    return render_template("auth.html", mode="login")
+
+
+@app.route("/register")
+def register_page():
+    if "user_id" in session:
+        return redirect("/")
+    return render_template("auth.html", mode="register")
 
 # --- API: Sets & Tracks ---
 @app.route("/api/sets")
