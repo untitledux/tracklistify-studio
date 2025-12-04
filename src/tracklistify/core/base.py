@@ -6,7 +6,7 @@ import concurrent.futures
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Optional, Tuple
 
 # Local/package imports
 from tracklistify.config.factory import get_config
@@ -34,6 +34,7 @@ class AsyncApp:
         self.logger = get_logger(__name__)
         self.shutdown_event = asyncio.Event()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+        self.mix_metadata: dict = {}
 
         # Always recreate identification_manager with fresh config
         self.identification_manager = IdentificationManager(
@@ -49,60 +50,7 @@ class AsyncApp:
     async def process_input(self, input_path: str):
         """Process input URL or file path."""
         try:
-            # Validate input (URL or local file path)
-            validated_result = validate_input(input_path)
-            if validated_result is None:
-                raise ValueError("Invalid URL or file path provided")
-
-            validated_path, is_local_file = validated_result
-            self.logger.info(f"Validated input: {validated_path}")
-
-            if is_local_file:
-                # Local file processing
-                if not Path(validated_path).exists():
-                    raise FileNotFoundError(f"Local file not found: {validated_path}")
-
-                local_path = validated_path
-                self.logger.info(f"Processing local file: {local_path}")
-
-                # Set metadata from file name
-                file_stem = Path(local_path).stem
-                self.original_title = sanitizer(file_stem)
-                self.uploader = "Unknown artist"
-                self.duration = 0
-            else:
-                # URL processing - download the file
-                downloader = self.downloader_factory.create_downloader(validated_path)
-                if downloader is None:
-                    raise ValueError("Failed to create downloader")
-                self.logger.info("Downloading audio...")
-                local_path = await downloader.download(validated_path)
-                if local_path is None:
-                    raise ValueError("local_path cannot be None")
-                self.logger.info(f"Downloaded audio to: {local_path}")
-
-                # Store metadata for output
-                metadata = getattr(downloader, "get_last_metadata", lambda: None)()
-                if metadata:
-                    self.logger.debug(f"yt-dlp metadata keys: {list(metadata.keys())}")
-                    self.original_title = sanitizer(metadata.get("title", ""))
-                    self.uploader = sanitizer(metadata.get("uploader", ""))
-                    try:
-                        self.duration = float(metadata.get("duration", 0))
-                    except (TypeError, ValueError):
-                        self.duration = 0
-                else:
-                    self.logger.debug("No metadata available, using fallback values")
-                    self.original_title = sanitizer(
-                        getattr(downloader, "title", Path(local_path).stem)
-                    )
-                    self.uploader = sanitizer(
-                        getattr(downloader, "uploader", "Unknown artist")
-                    )
-                    try:
-                        self.duration = float(getattr(downloader, "duration", 0))
-                    except (TypeError, ValueError):
-                        self.duration = 0
+            local_path, source_path = await self._prepare_input(input_path)
 
             self.logger.info("Processing audio...")
 
@@ -119,7 +67,7 @@ class AsyncApp:
             if not tracks:
                 context = {
                     "segments_created": len(audio_segments),
-                    "input_path": validated_path,
+                    "input_path": source_path,
                     "file_duration": getattr(self, "duration", "unknown"),
                 }
                 raise TrackIdentificationError(
@@ -324,7 +272,11 @@ class AsyncApp:
             ValueError: If tracks list is empty
         """
         if len(tracks) == 0:
-            self.logger.error("Cannot save output: No tracks provided")
+            logger.error("Cannot save output: No tracks provided")
+            return
+
+        if not isinstance(format, str):
+            logger.error("Failed to save tracklist in format: invalid format type")
             return
 
         # Get title from the original title or use a default
@@ -337,11 +289,7 @@ class AsyncApp:
                 title = "Identified Mix"
 
         # Prepare mix info using the downloaded title
-        mix_info = {
-            "title": title,
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "track_count": len(tracks),
-        }
+        mix_info = self._build_mix_info(title, tracks)
 
         try:
             # Create output handler
@@ -352,19 +300,113 @@ class AsyncApp:
                 saved_files = output.save_all()
                 if saved_files:
                     for file in saved_files:
-                        self.logger.debug(f"Saved tracklist to: {file}")
+                        logger.debug(f"Saved tracklist to: {file}")
                 else:
-                    self.logger.error("Failed to save tracklist in any format")
+                    logger.error("Failed to save tracklist in any format")
             else:
                 if saved_file := output.save(format):
-                    self.logger.info(f"Saved {format} tracklist to: {saved_file}")
+                    logger.info(f"Saved {format} tracklist to: {saved_file}")
                 else:
-                    self.logger.error(f"Failed to save tracklist in format: {format}")
+                    logger.error(f"Failed to save tracklist in format: {format}")
 
         except Exception as e:
-            self.logger.error(f"Error saving tracklist: {e}")
+            logger.error(f"Error saving tracklist: {e}")
             if self.config.debug:
-                self.logger.error(traceback.format_exc())
+                logger.error(traceback.format_exc())
+
+    def _build_mix_info(self, title: str, tracks: List["Track"]) -> dict:
+        """Compose mix info dictionary with available metadata."""
+        mix_info = {
+            "title": title,
+            "artist": getattr(self, "uploader", ""),
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "track_count": len(tracks),
+        }
+
+        # Provide additional metadata if available
+        duration = getattr(self, "duration", None)
+        if duration:
+            try:
+                mix_info["duration"] = float(duration)
+            except (TypeError, ValueError):
+                pass
+
+        return mix_info
+
+    async def _prepare_input(self, input_path: str) -> Tuple[str, str]:
+        """Validate input and either prepare local path or download."""
+        validated_result = validate_input(input_path)
+        if validated_result is None:
+            raise ValueError("Invalid URL or file path provided")
+
+        validated_path, is_local_file = validated_result
+        self.logger.info(f"Validated input: {validated_path}")
+
+        return (
+            await self._handle_local_file(validated_path)
+            if is_local_file
+            else await self._handle_remote_file(validated_path)
+        )
+
+    async def _handle_local_file(self, validated_path: str) -> Tuple[str, str]:
+        """Handle metadata initialization for local files."""
+        if not Path(validated_path).exists():
+            raise FileNotFoundError(f"Local file not found: {validated_path}")
+
+        self.logger.info(f"Processing local file: {validated_path}")
+        file_stem = Path(validated_path).stem
+        self._set_mix_metadata(title=sanitizer(file_stem), uploader="Unknown artist")
+        return validated_path, validated_path
+
+    async def _handle_remote_file(self, validated_path: str) -> Tuple[str, str]:
+        """Download remote file and capture metadata."""
+        downloader = self.downloader_factory.create_downloader(validated_path)
+        if downloader is None:
+            raise ValueError("Failed to create downloader")
+
+        self.logger.info("Downloading audio...")
+        local_path = await downloader.download(validated_path)
+        if local_path is None:
+            raise ValueError("local_path cannot be None")
+
+        self.logger.info(f"Downloaded audio to: {local_path}")
+        metadata = getattr(downloader, "get_last_metadata", lambda: None)()
+        self._apply_downloader_metadata(metadata, downloader, local_path)
+        return local_path, validated_path
+
+    def _apply_downloader_metadata(
+        self, metadata: Optional[dict], downloader, local_path: str
+    ) -> None:
+        """Apply downloader metadata with fallbacks for missing data."""
+        if metadata:
+            self.logger.debug(f"yt-dlp metadata keys: {list(metadata.keys())}")
+            title = metadata.get("title", "")
+            uploader = metadata.get("uploader", "")
+            duration = metadata.get("duration", 0)
+        else:
+            self.logger.debug("No metadata available, using fallback values")
+            title = getattr(downloader, "title", Path(local_path).stem)
+            uploader = getattr(downloader, "uploader", "Unknown artist")
+            duration = getattr(downloader, "duration", 0)
+
+        self._set_mix_metadata(title=title, uploader=uploader, duration=duration)
+
+    def _set_mix_metadata(
+        self, title: str, uploader: str, duration: Optional[float] = None
+    ) -> None:
+        """Normalize and persist mix-level metadata for later output."""
+        self.original_title = sanitizer(title)
+        self.uploader = sanitizer(uploader)
+        try:
+            self.duration = float(duration) if duration is not None else 0
+        except (TypeError, ValueError):
+            self.duration = 0
+
+        self.mix_metadata = {
+            "title": self.original_title,
+            "artist": self.uploader,
+            "duration": self.duration,
+        }
 
     async def cleanup(self):
         """Cleanup resources"""
