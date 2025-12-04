@@ -218,10 +218,22 @@ document.addEventListener('alpine:init', () => {
                     const currentLog = status.active.log.trim();
                     if (currentLog !== this.lastLogLine) {
                         this.lastLogLine = currentLog;
-                        
+
+                        const cleanMsg = currentLog.replace(/\[.*?\]/g, '').trim();
+
+                        const enrichmentMatches = [
+                            { regex: /found\s+beatport\s+profile/i, title: "Producer Identified", type: "user" },
+                            { regex: /found\s+soundcloud/i, title: "DJ Profile Linked", type: "cloud" }
+                        ];
+
+                        enrichmentMatches.forEach(match => {
+                            if (match.regex.test(cleanMsg)) {
+                                this.showToast(match.title, cleanMsg, match.type);
+                            }
+                        });
+
                         if (currentLog.includes("Found") || currentLog.includes("Identified") || currentLog.includes("=>")) {
                             // Track erkannt
-                            let cleanMsg = currentLog.replace(/\[.*?\]/g, '').trim(); 
                             this.showToast("Track erkannt", cleanMsg, "track");
                         } else if (currentLog.includes("Download:")) {
                             this.showToast("Download gestartet", status.active.label, "info");
