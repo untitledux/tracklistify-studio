@@ -151,6 +151,11 @@ def add_job():
 def queue_status():
     return jsonify(job_manager.get_status())
 
+@app.route("/api/queue/stop", methods=["POST"])
+def queue_stop():
+    stopped = job_manager.stop_active()
+    return jsonify({"ok": True, "stopped": stopped})
+
 # --- API: Rescan & Audio ---
 @app.route("/api/tracks/rescan_candidates")
 def rescan_list():
