@@ -570,10 +570,52 @@ document.addEventListener('alpine:init', () => {
         async fetchPurchases() { const res = await fetch('/api/tracks/purchases'); this.purchasedTracks = await res.json(); },
         async fetchProducerLikes() { const res = await fetch('/api/producers/likes'); this.favoriteProducers = await res.json(); },
         async fetchRescan() { const res = await fetch('/api/tracks/rescan_candidates'); this.rescanCandidates = await res.json(); },
-        async fetchYoutube() {
-            const res = await fetch('/api/youtube/feeds');
-            const data = await res.json();
-            this.youtubeFeed = data.items || [];
+        deriveYoutubeArtists(query = '') {
+            const filter = query ? query.toLowerCase() : null;
+            const names = new Set();
+
+            this.likedTracks.forEach(track => {
+                [track.artist, track.producer_name].forEach(name => {
+                    if (!name) return;
+                    const trimmed = name.trim();
+                    if (!trimmed) return;
+                    if (filter && !trimmed.toLowerCase().includes(filter)) return;
+                    names.add(trimmed);
+                });
+            });
+
+            return Array.from(names);
+        },
+        async fetchYoutube(artists = [], query = '') {
+            const artistList = artists.length ? artists : this.deriveYoutubeArtists(query);
+
+            if (!artistList.length) {
+                this.youtubeFeed = [];
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.set('artists', artistList.join(','));
+            if (query) params.set('q', query);
+
+            try {
+                const res = await fetch(`/api/youtube/feeds?${params.toString()}`);
+                const data = await res.json();
+                if (res.ok && data.ok) {
+                    this.youtubeFeed = data.items || [];
+                } else {
+                    this.youtubeFeed = [];
+                    if (data.error) this.showToast('YouTube Feed', data.error, 'warning');
+                }
+            } catch (e) {
+                this.youtubeFeed = [];
+            }
+        },
+        async refreshEngagementFeeds(query = '') {
+            await Promise.all([
+                this.fetchDashboard(),
+                this.fetchYoutube([], query)
+            ]);
         },
         async fetchProfile() {
             try {
