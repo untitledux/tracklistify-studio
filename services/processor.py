@@ -125,6 +125,10 @@ def process_job(job, cancel_event: Event | None = None):
             job.log_msg("ACHTUNG: Importer gab unerwartetes Format zurück, Metadata Skip.")
 
         count = len(new_ids)
+        if count:
+            job.log_msg(f"Import abgeschlossen: {count} neues Set")
+        else:
+            job.log_msg("Kein neues Set gefunden, eventuell bereits importiert.")
         
         # 4. METADATA
         if job.metadata and new_ids:
@@ -151,4 +155,5 @@ def process_job(job, cancel_event: Event | None = None):
         try:
             if file_path and os.path.exists(file_path):
                 os.remove(file_path)
-        except: pass
+        except:
+            pass

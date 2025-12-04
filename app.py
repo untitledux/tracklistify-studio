@@ -11,6 +11,8 @@ import database
 from job_manager import manager as job_manager
 from services.processor import resolve_audio_stream_url
 
+database.init_db()
+
 app = Flask(__name__)
 
 # --- Caching ---

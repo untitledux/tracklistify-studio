@@ -30,6 +30,15 @@ class Job:
 
 class JobManager:
     def __init__(self):
+        # Ensure the database exists before any worker activity
+        try:
+            database.init_db()
+        except Exception as exc:
+            print(f"[JobManager] DB init failed: {exc}")
+
+        # Import any leftover analysis results from previous runs
+        self._import_pending_outputs()
+
         self.jobs = {}
         self.queue = []
         self.current_job_id = None
