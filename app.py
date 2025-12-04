@@ -1,5 +1,7 @@
 import os
 import json
+import secrets
+import string
 from flask import Flask, jsonify, request, render_template, send_from_directory, session, redirect
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
@@ -314,11 +316,100 @@ def login():
     return jsonify({"ok": True, "username": user["username"]})
 
 
-@app.route("/api/auth/profile")
+@app.route("/api/auth/profile", methods=["GET", "POST"])
 def profile():
     if "user_id" not in session:
         return jsonify({"ok": False}), 401
-    return jsonify({"ok": True, "username": session.get("username")})
+
+    user = database.get_user_by_id(session.get("user_id"))
+    if not user:
+        return jsonify({"ok": False}), 404
+
+    if request.method == "GET":
+        avatar_url = None
+        if user.get("avatar_path"):
+            avatar_url = f"/static/avatars/{os.path.basename(user.get('avatar_path'))}"
+
+        return jsonify(
+            {
+                "ok": True,
+                "username": user.get("username"),
+                "display_name": user.get("display_name"),
+                "dj_name": user.get("dj_name"),
+                "soundcloud_url": user.get("soundcloud_url"),
+                "avatar_url": avatar_url,
+            }
+        )
+
+    display_name = request.form.get("display_name") or ""
+    dj_name = request.form.get("dj_name") or ""
+    soundcloud_url = request.form.get("soundcloud_url") or ""
+    avatar = request.files.get("avatar")
+
+    avatar_path = None
+    if avatar and avatar.filename:
+        os.makedirs(os.path.join(STATIC_DIR, "avatars"), exist_ok=True)
+        filename = secure_filename(avatar.filename)
+        avatar_path = os.path.join(STATIC_DIR, "avatars", filename)
+        avatar.save(avatar_path)
+
+    database.update_user_profile(user.get("id"), display_name, dj_name, soundcloud_url, avatar_path)
+
+    avatar_url = None
+    if avatar_path:
+        avatar_url = f"/static/avatars/{os.path.basename(avatar_path)}"
+    elif user.get("avatar_path"):
+        avatar_url = f"/static/avatars/{os.path.basename(user.get('avatar_path'))}"
+
+    return jsonify(
+        {
+            "ok": True,
+            "username": user.get("username"),
+            "display_name": display_name,
+            "dj_name": dj_name,
+            "soundcloud_url": soundcloud_url,
+            "avatar_url": avatar_url,
+        }
+    )
+
+
+@app.route("/api/users", methods=["GET"])
+def list_users():
+    if "user_id" not in session:
+        return jsonify({"ok": False}), 401
+    return jsonify({"ok": True, "users": database.list_users()})
+
+
+@app.route("/api/users/invite", methods=["POST"])
+def invite_user():
+    if "user_id" not in session:
+        return jsonify({"ok": False}), 401
+
+    data = request.get_json(force=True)
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "").strip()
+
+    if not username:
+        return jsonify({"ok": False, "error": "Username erforderlich"}), 400
+
+    if database.get_user(username):
+        return jsonify({"ok": False, "error": "User existiert bereits"}), 409
+
+    if not password:
+        alphabet = string.ascii_letters + string.digits
+        password = "".join(secrets.choice(alphabet) for _ in range(12))
+
+    pw_hash = generate_password_hash(password)
+    user_id = database.create_user(username, pw_hash)
+    return jsonify({"ok": True, "user_id": user_id, "password": password})
+
+
+@app.route("/api/users/<int:uid>", methods=["DELETE"])
+def remove_user(uid):
+    if "user_id" not in session:
+        return jsonify({"ok": False}), 401
+    deleted = database.delete_user(uid)
+    return jsonify({"ok": bool(deleted)})
 
 
 @app.route("/api/auth/logout", methods=["POST"])

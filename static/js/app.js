@@ -34,11 +34,19 @@ document.addEventListener('alpine:init', () => {
             top_producers: [],
             top_djs: []
         },
+
+        profile: { display_name: '', dj_name: '', soundcloud_url: '', avatar_url: '' },
+
+        admin: {
+            show: false,
+            users: [],
+            invite: { username: '', password: '', generated: '' }
+        },
         
         // =====================================================================
         // UI STATE
         // =====================================================================
-        currentView: 'dashboard', 
+        currentView: 'dashboard',
         queueStatus: { active: null, queue: [], history: [] },
         
         // Inputs für Upload Modal
@@ -266,13 +274,13 @@ document.addEventListener('alpine:init', () => {
             this.ui.showLikes = false; 
         },
         
-        showRescanView() { 
-            this.currentView = 'rescan'; 
-            this.activeSet = null; 
-            this.fetchRescan(); 
-            this.ui.showLikes = false; 
+        showRescanView() {
+            this.currentView = 'rescan';
+            this.activeSet = null;
+            this.fetchRescan();
+            this.ui.showLikes = false;
         },
-        
+
         showLikesView() {
             this.currentView = 'likes';
             this.ui.showLikes = false;
@@ -280,7 +288,12 @@ document.addEventListener('alpine:init', () => {
             this.fetchPurchases();
             this.fetchProducerLikes();
         },
-        
+
+        showCollections() {
+            this.currentView = 'collections';
+            this.fetchLikes();
+        },
+
         showSetView(set) {
             this.loadSet(set);
         },
@@ -625,7 +638,13 @@ document.addEventListener('alpine:init', () => {
                 const res = await fetch('/api/auth/profile');
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.ok) this.auth.username = data.username;
+                    if (data.ok) {
+                        this.auth.username = data.username;
+                        this.profile.display_name = data.display_name || '';
+                        this.profile.dj_name = data.dj_name || '';
+                        this.profile.soundcloud_url = data.soundcloud_url || '';
+                        this.profile.avatar_url = data.avatar_url || '';
+                    }
                 } else if (res.status === 401) {
                     this.auth.username = null;
                 }
@@ -660,14 +679,68 @@ document.addEventListener('alpine:init', () => {
             window.location.href = `/login?next=${next}`;
             return false;
         },
-        
+
+        async saveProfile() {
+            if (!this.ensureAuthenticated()) return;
+
+            const fd = new FormData();
+            fd.append('display_name', this.profile.display_name || '');
+            fd.append('dj_name', this.profile.dj_name || '');
+            fd.append('soundcloud_url', this.profile.soundcloud_url || '');
+            if (this.$refs.avatarInput && this.$refs.avatarInput.files[0]) {
+                fd.append('avatar', this.$refs.avatarInput.files[0]);
+            }
+
+            const res = await fetch('/api/auth/profile', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (res.ok && data.ok) {
+                this.profile.avatar_url = data.avatar_url || this.profile.avatar_url;
+                this.ui.showProfileModal = false;
+            }
+        },
+
+        async openAdmin() {
+            if (!this.ensureAuthenticated()) return;
+            await this.loadAdminUsers();
+            this.admin.show = true;
+        },
+
+        async loadAdminUsers() {
+            const res = await fetch('/api/users');
+            const data = await res.json();
+            if (res.ok && data.ok) {
+                this.admin.users = data.users || [];
+            }
+        },
+
+        async inviteUser() {
+            if (!this.ensureAuthenticated()) return;
+            const payload = { username: this.admin.invite.username, password: this.admin.invite.password };
+            const res = await fetch('/api/users/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const data = await res.json();
+            if (res.ok && data.ok) {
+                this.admin.invite.generated = data.password;
+                this.admin.invite.username = '';
+                this.admin.invite.password = '';
+                await this.loadAdminUsers();
+            }
+        },
+
+        async deleteUser(userId) {
+            if (!this.ensureAuthenticated()) return;
+            await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+            await this.loadAdminUsers();
+        },
+
         async toggleLike(track) {
             if (!this.ensureAuthenticated()) return;
 
             track.liked = !track.liked;
             // Update Local List
-            if (this.currentView === 'likes' && !track.liked) {
+            if (!track.liked) {
                 this.likedTracks = this.likedTracks.filter(t => t.id !== track.id);
+            } else if (!this.likedTracks.find(t => t.id === track.id)) {
+                this.likedTracks.push({ ...track, set_name: track.set_name || (this.activeSet ? this.activeSet.name : track.set_name) });
             }
 
             await fetch(`/api/tracks/${track.id}/like`, {
@@ -675,7 +748,7 @@ document.addEventListener('alpine:init', () => {
                 body: JSON.stringify({liked: track.liked ? 1 : 0})
             });
 
-            if (this.currentView !== 'likes') this.fetchLikes();
+            if (this.currentView === 'collections') this.fetchLikes();
         },
 
         async togglePurchase(track) {

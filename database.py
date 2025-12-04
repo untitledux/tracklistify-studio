@@ -158,10 +158,27 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
             password_hash TEXT,
+            display_name TEXT,
+            dj_name TEXT,
+            soundcloud_url TEXT,
+            avatar_path TEXT,
             created_at TEXT DEFAULT (datetime('now'))
         )
         """
     )
+
+    cur.execute("PRAGMA table_info(users)")
+    existing_user_cols = [col[1] for col in cur.fetchall()]
+    new_user_cols = {
+        "display_name": "TEXT",
+        "dj_name": "TEXT",
+        "soundcloud_url": "TEXT",
+        "avatar_path": "TEXT"
+    }
+    for col, dtype in new_user_cols.items():
+        if col not in existing_user_cols:
+            print(f"Migriere DB: Füge {col} zu users hinzu...")
+            cur.execute(f"ALTER TABLE users ADD COLUMN {col} {dtype}")
 
     # --- MIGRATION: Neue Spalten hinzufügen ---
     cur.execute("PRAGMA table_info(sets)")
@@ -703,20 +720,82 @@ def get_dashboard_stats():
 def get_user(username):
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT id, username, password_hash FROM users WHERE username = ?", (username,))
+    cur.execute("SELECT id, username, password_hash, display_name, dj_name, soundcloud_url, avatar_path, created_at FROM users WHERE username = ?", (username,))
     row = cur.fetchone()
     conn.close()
     return dict(row) if row else None
 
 
-def create_user(username, password_hash):
+def get_user_by_id(user_id: int):
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, password_hash))
+    cur.execute("SELECT id, username, password_hash, display_name, dj_name, soundcloud_url, avatar_path, created_at FROM users WHERE id = ?", (user_id,))
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def create_user(username, password_hash, display_name=None):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO users (username, password_hash, display_name) VALUES (?, ?, ?)",
+        (username, password_hash, display_name or username),
+    )
     conn.commit()
     user_id = cur.lastrowid
     conn.close()
     return user_id
+
+
+def update_user_profile(user_id, display_name, dj_name, soundcloud_url, avatar_path=None):
+    conn = get_conn()
+    cur = conn.cursor()
+    fields = {
+        "display_name": display_name,
+        "dj_name": dj_name,
+        "soundcloud_url": soundcloud_url,
+    }
+    if avatar_path is not None:
+        fields["avatar_path"] = avatar_path
+
+    set_clause = ", ".join([f"{col} = ?" for col in fields.keys()])
+    params = list(fields.values()) + [user_id]
+
+    cur.execute(f"UPDATE users SET {set_clause} WHERE id = ?", params)
+    conn.commit()
+    conn.close()
+
+
+def get_user_profile(user_id):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, username, display_name, dj_name, soundcloud_url, avatar_path, created_at FROM users WHERE id = ?",
+        (user_id,),
+    )
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def list_users():
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT id, username, display_name, dj_name, soundcloud_url, created_at FROM users ORDER BY created_at DESC")
+    rows = [dict(row) for row in cur.fetchall()]
+    conn.close()
+    return rows
+
+
+def delete_user(user_id):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    deleted = cur.rowcount
+    conn.close()
+    return deleted
 
 
 def get_engaged_artists(query=None, limit=10):
