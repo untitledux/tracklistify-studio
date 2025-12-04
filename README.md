@@ -1,136 +1,66 @@
-![Tracklistify banner](docs/assets/banner.png)
-
-<div align="center">
-
-[![GitHub stars](https://img.shields.io/github/stars/betmoar/tracklistify?style=social)](https://github.com/betmoar/tracklistify/stargazers)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
-[![Made with ❤️](https://img.shields.io/badge/Made%20with-❤️-red.svg)](https://github.com/betmoar/tracklistify)
-
-### [Changelog](docs/CHANGELOG.md) · [Issues](https://github.com/betmoar/tracklistify/issues) · [Contributing](docs/CONTRIBUTING.md)
-
-</div>
-
 # Tracklistify
 
-A powerful and flexible automatic tracklist generator for DJ mixes and audio streams. Identifies tracks in your mixes using multiple providers (Shazam, ACRCloud) and generates formatted playlists with high accuracy.
+Tracklistify is a command-line tool that identifies tracks in DJ mixes or streaming URLs and exports the result in multiple playlist formats. It coordinates Shazam and ACRCloud lookups, manages downloads via `yt-dlp`, and writes outputs to Markdown, JSON, or M3U while handling caching, retries, and rate limits for you.
 
-## Key Features
+![Tracklistify banner](docs/assets/banner.png)
 
-### 🎵 **Multi-Provider Track Identification**
-
-  - Shazam and ACRCloud integration
-  - Smart provider fallback system
-  - High accuracy with confidence scoring
-  - Support for multiple platforms (YouTube, Mixcloud, SoundCloud)
-
-### 📊 **Versatile Output Formats**
-
-  - JSON with detailed metadata
-  - Markdown formatted tracklists
-  - M3U playlists
-  - CSV and XML exports
-  - Rekordbox compatible format
-
-### 🚀 **Advanced Processing**
-
-  - Automatic format conversion
-  - Batch processing for multiple files
-  - Intelligent caching system
-  - Progress tracking with detailed status
-  - Configurable audio quality settings
-
-### ⚙️ **Robust Architecture**
-
-  - Asynchronous processing
-  - Smart rate limiting
-  - Advanced error recovery
-  - Comprehensive logging system
-  - Docker support
+## Features
+- Uses multiple providers with optional fallback so failed lookups can automatically retry on another service.
+- Supports local files or streaming URLs handled by `yt-dlp` downloads.
+- Exports tracklists as Markdown, JSON, or M3U playlists in a configurable output directory.
+- Async processing with configurable rate limiting, retries, and circuit breaking to protect provider APIs.
+- Detailed logging with optional file output for troubleshooting long batch runs.
 
 ## Requirements
+- Python 3.11–3.13
+- `ffmpeg`
+- `git`
+- [`uv`](https://docs.astral.sh/uv/getting-started/installation/) for dependency management
 
-- Python 3.11 or higher
-- ffmpeg
-- git
-- uv (package and project manager)
-
-### Important Note:
-
-- Tracklistify is managed by uv, so you will need to install it.
-- Follow the [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/) for your platform.
-
-## Quick Start
-
-### **1. Installation**
-
-   ```bash
-   # Clone the repository
-   git clone https://github.com/betmoar/tracklistify.git
-   cd tracklistify
-
-   # Install dependencies using uv
-   uv sync
-   ```
-
-### **2. Configuration**
-
-   ```bash
-   # Copy example environment file
-   cp .env.example .env
-   ```
-
-### **3. Basic Usage**
-
-   ```bash
-   # Identify tracks in a file or URL
-   uv run tracklistify <input>
-
-   # Examples:
-   tracklistify path/to/mix.mp3
-   tracklistify https://youtube.com/watch?v=example
-   ```
-
-## Advanced Usage
-
-### Output Formats
-
+## Installation
 ```bash
-# Specify output format
-tracklistify -f json input.mp3    # JSON output
-tracklistify -f markdown input.mp3 # Markdown output
-tracklistify -f m3u input.mp3     # M3U playlist
-tracklistify -f csv input.mp3     # CSV export
-tracklistify -f all input.mp3     # Generate all formats
+# Clone the repository
+git clone https://github.com/betmoar/tracklistify.git
+cd tracklistify
+
+# Install dependencies
+uv sync
 ```
 
-### Batch Processing
+## Configuration
+Copy the example environment file and adjust values for your environment and providers:
 
 ```bash
-# Process multiple files
-tracklistify -b path/to/folder/*.mp3
-
-# With specific output format
-tracklistify -b -f json path/to/folder/*.mp3
+cp .env.example .env
 ```
 
-### Additional Options
+Key settings (all prefixed with `TRACKLISTIFY_`):
+- Output paths such as `OUTPUT_DIR`, `CACHE_DIR`, `TEMP_DIR`, and `LOG_DIR` control where results are written.
+- Provider credentials and timeouts (e.g., `ACR_ACCESS_KEY`, `ACR_ACCESS_SECRET`, `SHAZAM_TIMEOUT`, `SPOTIFY_CLIENT_ID`).
+- Behavior toggles such as `FALLBACK_ENABLED`, rate limit values, retry strategy, and download quality/format.
+
+## Usage
+Run the CLI with a local file path or a supported URL:
 
 ```bash
-# Show progress with detailed status
-tracklistify --progress input.mp3
-
-# Specify provider
-tracklistify --provider shazam input.mp3
-
-# Set output directory
-tracklistify -o path/to/output input.mp3
+uv run tracklistify <input>
 ```
 
-## Contributing
+Common flags:
+- `-f, --formats {json,markdown,m3u,all}`: choose output formats (default: `all`).
+- `-p, --provider`: select a primary identification provider (e.g., `shazam`).
+- `--no-fallback`: disable provider fallback.
+- `--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}` and `--log-file PATH`: control logging.
+- `-d/--debug` and `-v/--verbose`: increase diagnostic output.
 
-Contributions are welcome! Please read our [Contributing Guide](docs/CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+Outputs and cache files default to the directories defined in your `.env` file (e.g., `.tracklistify/output`).
+
+## Development
+- Run tests: `uv run pytest`
+- Lint with Ruff: `uv run ruff check`
+- Format with Ruff: `uv run ruff format`
+
+Contributions are welcome. See `docs/CONTRIBUTING.md` for guidelines.
 
 ## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License. See `LICENSE` for details.
