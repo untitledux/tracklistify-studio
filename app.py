@@ -387,7 +387,7 @@ def login():
     return jsonify({"ok": True, "user": serialize_user(user)})
 
 
-@app.route("/api/auth/profile")
+@app.route("/api/auth/profile", methods=["GET", "POST"])
 def profile():
     user, error_response = require_session_user()
     if error_response:
