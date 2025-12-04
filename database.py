@@ -1,5 +1,7 @@
 import sqlite3
 from config import DB_PATH
+import feedparser
+import urllib.parse
 
 def get_conn():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
@@ -127,6 +129,17 @@ def init_db():
             created_at TEXT DEFAULT (datetime('now'))
         )
     """)
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password_hash TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+        """
+    )
 
     # --- MIGRATION: Neue Spalten hinzufügen ---
     cur.execute("PRAGMA table_info(sets)")
@@ -474,10 +487,23 @@ def save_soundcloud_profiles(profiles):
 
 def delete_set(set_id):
     conn = get_conn()
-    conn.execute("DELETE FROM tracks WHERE set_id = ?", (set_id,))
-    conn.execute("DELETE FROM sets WHERE id = ?", (set_id,))
+    cur = conn.cursor()
+    cur.execute("DELETE FROM tracks WHERE set_id = ?", (set_id,))
+    cur.execute("DELETE FROM sets WHERE id = ?", (set_id,))
+    deleted = cur.rowcount
     conn.commit()
     conn.close()
+    return deleted
+
+
+def delete_track(track_id):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM tracks WHERE id = ?", (track_id,))
+    deleted = cur.rowcount
+    conn.commit()
+    conn.close()
+    return deleted
 
 def get_dashboard_stats():
     conn = get_conn()
@@ -589,3 +615,60 @@ def get_dashboard_stats():
             "top_liked_artists": top_artists, "top_artists": top_artists,
             "top_sets": top_sets, "recent_sets": recent_sets,
             "top_producers": top_producers, "top_djs": top_djs}
+
+
+def get_user(username):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT id, username, password_hash FROM users WHERE username = ?", (username,))
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def create_user(username, password_hash):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, password_hash))
+    conn.commit()
+    user_id = cur.lastrowid
+    conn.close()
+    return user_id
+
+
+def fetch_youtube_feed(artists, max_items=6):
+    items = []
+    seen = set()
+    if not artists:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM djs ORDER BY id DESC LIMIT 5")
+        artists = [row[0] for row in cur.fetchall()]
+        conn.close()
+
+    for artist in artists:
+        if not artist:
+            continue
+        encoded = urllib.parse.quote_plus(artist)
+        feed_url = f"https://www.youtube.com/feeds/videos.xml?search_query={encoded}"
+        try:
+            parsed = feedparser.parse(feed_url)
+        except Exception:
+            continue
+
+        for entry in parsed.entries[:2]:
+            link = getattr(entry, "link", None)
+            if not link or link in seen:
+                continue
+            seen.add(link)
+            items.append(
+                {
+                    "title": getattr(entry, "title", ""),
+                    "link": link,
+                    "published": getattr(entry, "published", ""),
+                    "artist": artist,
+                }
+            )
+            if len(items) >= max_items:
+                return items
+    return items
