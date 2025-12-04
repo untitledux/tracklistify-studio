@@ -6,8 +6,7 @@ from datetime import datetime
 import traceback
 from threading import Event
 
-import database
-from services import importer
+
 from services.processor import JobCancelled
 
 class Job:
@@ -79,15 +78,6 @@ class JobManager:
                 self.current_cancel_event.set()
                 return True
             return False
-
-    def _import_pending_outputs(self):
-        try:
-            imported = importer.import_json_files()
-            count = len(imported) if isinstance(imported, list) else 0
-            if count:
-                print(f"[JobManager] Imported {count} pending set(s) on startup.")
-        except Exception as exc:
-            print(f"[JobManager] Import of pending outputs failed: {exc}")
 
     def _serialize(self, job):
         label = job.payload
