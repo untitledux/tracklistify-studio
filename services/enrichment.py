@@ -1,6 +1,5 @@
 import logging
-from typing import Optional
-from urllib.parse import quote_plus
+import urllib.parse
 
 import requests
 import yt_dlp
@@ -8,95 +7,81 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
-
-SOUNDCLOUD_FALLBACK_BASE = "https://soundcloud.com/search/people?q="
-BEATPORT_BASE = "https://www.beatport.com"
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-)
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0 Safari/537.36"
 
 
-def _default_result() -> dict:
-    return {"url": None, "image": None}
+def find_dj_on_soundcloud(dj_name: str):
+    """Find a DJ profile on SoundCloud using yt-dlp flat search as primary strategy.
 
-
-def find_dj_on_soundcloud(name: Optional[str]) -> dict:
-    """Find a DJ profile on SoundCloud using yt-dlp's SoundCloud search.
-
-    Falls back to the public people search page when yt-dlp cannot resolve a
-    profile. Always returns a dictionary with ``url`` and ``image`` keys.
+    Returns a dict with soundcloud_url, image_url, and soundcloud_id if a hit is found.
     """
+    if not dj_name:
+        return None
 
-    if not name:
-        return _default_result()
-
-    search_term = f"scsearch1:{name}"
+    query = f"scsearch1:{dj_name}"
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "extract_flat": True,
+        "skip_download": True,
+    }
     try:
-        with yt_dlp.YoutubeDL(
-            {
-                "quiet": True,
-                "skip_download": True,
-                "extract_flat": True,
-                "default_search": "auto",
-            }
-        ) as ydl:
-            info = ydl.extract_info(search_term, download=False)
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(query, download=False)
+            entries = info.get("entries") or []
+            if entries:
+                first = entries[0]
+                url = first.get("url") or first.get("webpage_url")
+                image_url = None
+                thumbs = first.get("thumbnails") or []
+                if thumbs:
+                    image_url = thumbs[-1].get("url") or thumbs[0].get("url")
+                return {
+                    "soundcloud_url": url,
+                    "image_url": image_url,
+                    "soundcloud_id": first.get("id"),
+                }
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("SoundCloud lookup failed via yt-dlp: %s", exc)
 
-        entries = info.get("entries") if isinstance(info, dict) else None
-        entry = entries[0] if entries else None
-        if entry:
-            url = (
-                entry.get("url")
-                or entry.get("webpage_url")
-                or entry.get("original_url")
-            )
-            image = entry.get("thumbnail")
-            if url:
-                return {"url": url, "image": image}
-    except Exception as exc:  # pragma: no cover - network/yt-dlp failures
-        logger.warning("SoundCloud lookup failed: %s", exc)
-
-    fallback_url = f"{SOUNDCLOUD_FALLBACK_BASE}{quote_plus(name)}"
-    return {"url": fallback_url, "image": None}
+    # Fallback: store a search link to at least surface the profile search
+    search_url = f"https://soundcloud.com/search/people?q={urllib.parse.quote_plus(dj_name)}"
+    return {"soundcloud_url": search_url, "image_url": None, "soundcloud_id": None}
 
 
-def find_producer_on_beatport(name: Optional[str]) -> dict:
-    """Find a producer profile on Beatport via the artist search page.
+def find_producer_on_beatport(producer_name: str):
+    """Scrape Beatport artist search results to find the first matching producer."""
+    if not producer_name:
+        return None
 
-    Scrapes the first artist result and returns its profile URL and image if
-    available. Returns the search page URL when no profile could be parsed.
-    """
-
-    if not name:
-        return _default_result()
-
-    search_url = f"{BEATPORT_BASE}/search/artists?q={quote_plus(name)}"
-    headers = {"User-Agent": USER_AGENT, "Accept-Language": "en-US,en;q=0.9"}
+    search_url = f"https://www.beatport.com/search/artists?q={urllib.parse.quote_plus(producer_name)}"
+    headers = {"User-Agent": USER_AGENT}
 
     try:
-        response = requests.get(search_url, headers=headers, timeout=10)
-        response.raise_for_status()
+        resp = requests.get(search_url, headers=headers, timeout=8)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
 
-        soup = BeautifulSoup(response.text, "html.parser")
-        link = None
-        for anchor in soup.find_all("a", href=True):
-            href = anchor.get("href", "")
-            if "/artist/" in href:
-                link = anchor
-                break
+        # Beatport search cards typically live under anchors with /artist/ slug
+        link = soup.select_one("a[href*='/artist/']")
+        if not link:
+            return None
 
-        if link:
-            href = link["href"]
-            url = href if href.startswith("http") else f"{BEATPORT_BASE}{href}"
+        url = urllib.parse.urljoin("https://www.beatport.com", link.get("href"))
+        image = None
+        img_tag = link.find("img")
+        if img_tag:
+            image = img_tag.get("data-src") or img_tag.get("src")
 
-            image_tag = link.find("img") or link.find_next("img")
-            image = None
-            if image_tag:
-                image = image_tag.get("data-src") or image_tag.get("src")
+        # Beatport URLs usually end with /<name>/<id>
+        beatport_id = None
+        try:
+            parts = url.rstrip("/").split("/")
+            beatport_id = parts[-1]
+        except Exception:
+            beatport_id = None
 
-            return {"url": url, "image": image}
-    except Exception as exc:  # pragma: no cover - network/scraper failures
-        logger.warning("Beatport lookup failed: %s", exc)
-
-    return {"url": search_url, "image": None}
+        return {"beatport_url": url, "image_url": image, "beatport_id": beatport_id}
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Beatport lookup failed: %s", exc)
+        return None
