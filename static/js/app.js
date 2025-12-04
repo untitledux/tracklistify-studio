@@ -120,17 +120,20 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({ url })
                 });
                 const data = await res.json();
-                
+
                 if (data.ok) {
                     // Nur überschreiben, wenn Felder leer oder wir sicher sind
                     if (!this.inputs.metaName) this.inputs.metaName = data.name || '';
                     if (!this.inputs.metaArtist) this.inputs.metaArtist = data.artist || '';
                     if (!this.inputs.metaEvent) this.inputs.metaEvent = data.event || '';
-                    
+
                     this.showToast("Infos gefunden", data.name || "Metadaten geladen", "info");
+                } else {
+                    this.showToast("Keine Metadaten", data.error || "Konnte Infos nicht laden", "info");
                 }
             } catch(e) {
                 console.error(e);
+                this.showToast("Fehler", "Metadaten konnten nicht geladen werden", "error");
             } finally {
                 this.inputs.isLoadingMeta = false;
             }
