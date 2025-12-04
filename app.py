@@ -194,9 +194,18 @@ def dashboard_stats():
 @app.route("/api/youtube/feeds")
 def youtube_feeds():
     artists = request.args.get("artists")
-    artist_list = artists.split(",") if artists else []
+    query = request.args.get("q")
+
+    if artists:
+        artist_list = [a.strip() for a in artists.split(",") if a.strip()]
+    else:
+        artist_list = database.get_engaged_artists(query=query)
+
+    if not artist_list:
+        return jsonify({"ok": False, "error": "Keine Artists aus Likes/Käufen gefunden"}), 404
+
     feeds = database.fetch_youtube_feed(artist_list)
-    return jsonify({"ok": True, "items": feeds})
+    return jsonify({"ok": True, "items": feeds, "artists": artist_list})
 
 @app.route("/api/sets/import", methods=["POST"])
 def run_import():

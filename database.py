@@ -636,15 +636,48 @@ def create_user(username, password_hash):
     return user_id
 
 
+def get_engaged_artists(query=None, limit=10):
+    """Return distinct artist names from liked or purchased tracks and their producers."""
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    filters = []
+    params = []
+    if query:
+        filters.append("LOWER(name) LIKE ?")
+        params.append(f"%{query.lower()}%")
+
+    where_clause = " WHERE " + " AND ".join(filters) if filters else ""
+
+    cur.execute(
+        f"""
+        SELECT name FROM (
+            SELECT DISTINCT t.artist as name
+            FROM tracks t
+            WHERE (t.liked = 1 OR t.purchased = 1) AND t.artist IS NOT NULL
+            UNION
+            SELECT DISTINCT p.name as name
+            FROM tracks t
+            JOIN producers p ON t.producer_id = p.id
+            WHERE (t.liked = 1 OR t.purchased = 1) AND p.name IS NOT NULL
+        ) base
+        {where_clause}
+        ORDER BY name COLLATE NOCASE
+        LIMIT ?
+        """,
+        (*params, limit),
+    )
+    artists = [row[0] for row in cur.fetchall() if row[0]]
+    conn.close()
+    return artists
+
+
 def fetch_youtube_feed(artists, max_items=6):
     items = []
     seen = set()
     if not artists:
-        conn = get_conn()
-        cur = conn.cursor()
-        cur.execute("SELECT name FROM djs ORDER BY id DESC LIMIT 5")
-        artists = [row[0] for row in cur.fetchall()]
-        conn.close()
+        return items
 
     for artist in artists:
         if not artist:
