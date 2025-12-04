@@ -28,15 +28,15 @@ document.addEventListener('alpine:init', () => {
         queueStatus: { active: null, queue: [], history: [] },
         
         // Inputs für Upload Modal
-        inputs: { 
-            url: '', 
-            file: null, 
-            metaName: '', 
-            metaArtist: '', 
-            metaEvent: '', 
-            metaTags: '', 
+        inputs: {
+            url: '',
+            file: null,
+            metaName: '',
+            metaArtist: '',
+            metaEvent: '',
+            metaTags: '',
             is_b2b: false,
-            isLoadingMeta: false 
+            isLoadingMeta: false
         },
         
         // Inputs für Edit Modal
@@ -68,10 +68,9 @@ document.addEventListener('alpine:init', () => {
             paused: true 
         },
         
-        preloadQueue: [], 
-        activePreloads: 0, 
-        maxPreloads: 6, 
-        metaDebounce: null,
+        preloadQueue: [],
+        activePreloads: 0,
+        maxPreloads: 6,
 
         // =====================================================================
         // INITIALIZATION
@@ -101,18 +100,9 @@ document.addEventListener('alpine:init', () => {
                 else this.filteredSets = this.sets.filter(s => s.name.toLowerCase().includes(val.toLowerCase()));
             });
             
-            // URL Metadata Watcher (Debounced)
-            this.$watch('inputs.url', (value) => {
-                if (value && (value.startsWith('http') || value.startsWith('www'))) {
-                    this.inputs.isLoadingMeta = true;
-                    clearTimeout(this.metaDebounce);
-                    this.metaDebounce = setTimeout(() => this.fetchUrlMetadata(value), 1000);
-                }
-            });
-
             // Player Init
-            this.$nextTick(() => { 
-                if(this.$refs.player) this.$refs.player.volume = this.audio.volume; 
+            this.$nextTick(() => {
+                if(this.$refs.player) this.$refs.player.volume = this.audio.volume;
             });
         },
 
@@ -122,10 +112,12 @@ document.addEventListener('alpine:init', () => {
         
         // 1. Server: Holt Infos von YouTube/Mixcloud via yt-dlp
         async fetchUrlMetadata(url) {
+            if (!url || !(url.startsWith('http') || url.startsWith('www'))) return;
+            this.inputs.isLoadingMeta = true;
             try {
-                const res = await fetch('/api/resolve_metadata', { 
-                    method: 'POST', 
-                    body: JSON.stringify({ url }) 
+                const res = await fetch('/api/resolve_metadata', {
+                    method: 'POST',
+                    body: JSON.stringify({ url })
                 });
                 const data = await res.json();
                 
@@ -167,7 +159,7 @@ document.addEventListener('alpine:init', () => {
         // QUEUE & JOBS
         // =====================================================================
         async addToQueue(type) {
-            const fd = new FormData(); 
+            const fd = new FormData();
             fd.append('type', type);
             
             const meta = { 
@@ -179,29 +171,31 @@ document.addEventListener('alpine:init', () => {
             };
             fd.append('metadata', JSON.stringify(meta));
 
-            if (type === 'url') { 
-                if (!this.inputs.url) return; 
-                fd.append('value', this.inputs.url); 
-                this.inputs.url = ''; 
-            } else { 
-                const f = this.$refs.fileInput; 
-                if (!f.files.length) return; 
-                fd.append('file', f.files[0]); 
-                f.value = ''; 
+            if (type === 'url') {
+                if (!this.inputs.url) return;
+                fd.append('value', this.inputs.url);
+            } else {
+                const f = this.$refs.fileInput;
+                if (!f.files.length) return;
+                fd.append('file', f.files[0]);
+                f.value = '';
             }
-            
-            await fetch('/api/queue/add', { method: 'POST', body: fd }); 
-            
-            // UI Reset
+
+            // Direkt Modal schließen und zur Queue springen
             this.ui.showAddModal = false;
-            this.inputs.metaName = ''; 
-            this.inputs.metaArtist = ''; 
-            this.inputs.metaEvent = ''; 
-            this.inputs.metaTags = '';
-            
-            // Zur Queue wechseln
-            this.pollQueue(); 
             this.showQueueView();
+
+            await fetch('/api/queue/add', { method: 'POST', body: fd });
+
+            // UI Reset
+            this.inputs.url = '';
+            this.inputs.metaName = '';
+            this.inputs.metaArtist = '';
+            this.inputs.metaEvent = '';
+            this.inputs.metaTags = '';
+
+            // Zur Queue wechseln
+            this.pollQueue();
         },
 
         async pollQueue() {
