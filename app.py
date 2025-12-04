@@ -1,6 +1,7 @@
 import os
 import json
-from flask import Flask, jsonify, request, render_template, send_from_directory
+from flask import Flask, jsonify, request, render_template, send_from_directory, session
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from functools import lru_cache
 import yt_dlp  # WICHTIG: pip install yt-dlp
@@ -14,6 +15,7 @@ from services.processor import resolve_audio_stream_url
 database.init_db()
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
 
 # --- Caching ---
 @lru_cache(maxsize=500)
@@ -48,8 +50,15 @@ def update_set_metadata(sid):
 
 @app.route("/api/sets/<int:sid>", methods=["DELETE"])
 def delete_set(sid):
-    database.delete_set(sid)
-    return jsonify({"ok": True})
+    deleted = database.delete_set(sid)
+    return jsonify({"ok": bool(deleted), "deleted": deleted})
+
+
+@app.route("/api/tracks/<int:tid>", methods=["DELETE"])
+def delete_track(tid):
+    deleted = database.delete_track(tid)
+    status = 200 if deleted else 404
+    return jsonify({"ok": bool(deleted), "deleted": deleted}), status
 
 @app.route("/api/tracks/<int:tid>/like", methods=["POST"])
 def like_track(tid):
@@ -181,6 +190,14 @@ def resolve_audio():
 def dashboard_stats():
     return jsonify(database.get_dashboard_stats())
 
+
+@app.route("/api/youtube/feeds")
+def youtube_feeds():
+    artists = request.args.get("artists")
+    artist_list = artists.split(",") if artists else []
+    feeds = database.fetch_youtube_feed(artist_list)
+    return jsonify({"ok": True, "items": feeds})
+
 @app.route("/api/sets/import", methods=["POST"])
 def run_import():
     import services.importer as importer
@@ -199,6 +216,52 @@ def serve_static(filename):
 @app.route("/static/js/<path:filename>")
 def serve_js(filename):
     return send_from_directory(os.path.join(STATIC_DIR, "js"), filename)
+
+
+# --- API: Auth ---
+@app.route("/api/auth/register", methods=["POST"])
+def register():
+    data = request.get_json(force=True)
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "").strip()
+    if not username or not password:
+        return jsonify({"ok": False, "error": "Username und Passwort erforderlich"}), 400
+
+    if database.get_user(username):
+        return jsonify({"ok": False, "error": "User existiert bereits"}), 409
+
+    pw_hash = generate_password_hash(password)
+    user_id = database.create_user(username, pw_hash)
+    session["user_id"] = user_id
+    session["username"] = username
+    return jsonify({"ok": True, "username": username})
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def login():
+    data = request.get_json(force=True)
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "").strip()
+    user = database.get_user(username)
+    if not user or not check_password_hash(user["password_hash"], password):
+        return jsonify({"ok": False, "error": "Ungültige Zugangsdaten"}), 401
+
+    session["user_id"] = user["id"]
+    session["username"] = user["username"]
+    return jsonify({"ok": True, "username": user["username"]})
+
+
+@app.route("/api/auth/profile")
+def profile():
+    if "user_id" not in session:
+        return jsonify({"ok": False}), 401
+    return jsonify({"ok": True, "username": session.get("username")})
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return jsonify({"ok": True})
 
 if __name__ == "__main__":
     database.init_db()

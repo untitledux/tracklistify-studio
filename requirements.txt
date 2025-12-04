@@ -194,3 +194,5 @@ yarl==1.9.4
 youtube-dl==2021.12.17
 yt-dlp==2025.11.12
 zstandard==0.23.0
+
+feedparser==6.0.11

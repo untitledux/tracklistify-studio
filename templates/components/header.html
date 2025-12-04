@@ -1,13 +1,11 @@
 <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 z-20 shadow-sm shrink-0 relative">
     
-    <div class="flex items-center gap-4 cursor-pointer group" @click="showDashboard()" title="Zum Dashboard">
-        <div class="relative">
-            <img src="/static/tracklistify_logo.png" alt="Logo" class="h-9 w-auto object-contain transition-transform duration-200 group-hover:scale-110">
-            <div x-show="currentView === 'dashboard'" class="absolute -bottom-1 -right-1 w-2 h-2 bg-orange-500 rounded-full border border-white"></div>
+    <div class="flex items-center gap-3 cursor-pointer group" @click="showDashboard()" title="Zum Dashboard">
+        <div class="hidden md:flex flex-col leading-tight">
+            <span class="text-[11px] uppercase tracking-[0.35em] text-gray-400">Tracklistify</span>
+            <h1 class="text-lg font-bold text-gray-800 tracking-tight group-hover:text-orange-600 transition-colors">Studio Dashboard</h1>
         </div>
-        <div class="hidden md:block">
-            <h1 class="text-base font-bold text-gray-800 tracking-tight group-hover:text-orange-600 transition-colors">Tracklistify <span class="text-orange-500">Studio</span></h1>
-        </div>
+        <div class="md:hidden text-sm font-semibold text-gray-800">Dashboard</div>
     </div>
 
     <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
@@ -54,9 +52,9 @@
             </template>
         </button>
 
-        <button @click="ui.showLikes = !ui.showLikes" 
+        <button @click="ui.showLikes = !ui.showLikes"
                 class="relative p-2 transition-all rounded-xl active:scale-95"
-                :class="ui.showLikes ? 'text-pink-600 bg-pink-50' : 'text-gray-400 hover:text-pink-500 hover:bg-pink-50'" 
+                :class="ui.showLikes ? 'text-pink-600 bg-pink-50' : 'text-gray-400 hover:text-pink-500 hover:bg-pink-50'"
                 title="Merkliste">
             <svg class="w-6 h-6" :fill="ui.showLikes ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -65,5 +63,27 @@
                 <span class="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-pink-500 ring-2 ring-white"></span>
             </template>
         </button>
+
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 bg-gray-50">
+            <template x-if="auth.username">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-orange-100 text-orange-700 font-bold flex items-center justify-center uppercase" x-text="auth.username[0]"></div>
+                    <div class="flex flex-col leading-none">
+                        <span class="text-xs font-semibold text-gray-800" x-text="auth.username"></span>
+                        <button class="text-[10px] text-gray-500 underline" @click="logout()">Logout</button>
+                    </div>
+                </div>
+            </template>
+            <template x-if="!auth.username">
+                <div class="flex items-center gap-2">
+                    <input type="text" placeholder="Username" class="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring focus:ring-orange-200"
+                           x-model="auth.form.username">
+                    <input type="password" placeholder="Passwort" class="text-xs px-2 py-1 border border-gray-200 rounded-lg focus:outline-none focus:ring focus:ring-orange-200"
+                           x-model="auth.form.password">
+                    <button class="text-xs px-3 py-1 bg-orange-500 text-white rounded-lg" @click="submitAuth()" x-text="auth.mode === 'login' ? 'Login' : 'Registrieren'"></button>
+                    <button class="text-[10px] text-gray-500 underline" @click="auth.mode = auth.mode === 'login' ? 'register' : 'login'" x-text="auth.mode === 'login' ? 'Account anlegen' : 'Schon registriert?'"></button>
+                </div>
+            </template>
+        </div>
     </div>
 </header>

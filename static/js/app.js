@@ -10,6 +10,14 @@ document.addEventListener('alpine:init', () => {
         tracks: [], 
         likedTracks: [], 
         rescanCandidates: [],
+        youtubeFeed: [],
+
+        auth: {
+            username: null,
+            form: { username: '', password: '' },
+            mode: 'login',
+            error: ''
+        },
         
         dashboardStats: {
             total_sets: 0,
@@ -81,8 +89,10 @@ document.addEventListener('alpine:init', () => {
         init() {
             this.fetchSets(); 
             this.fetchLikes(); 
-            this.fetchRescan(); 
+            this.fetchRescan();
             this.fetchDashboard();
+            this.fetchProfile();
+            this.fetchYoutube();
 
             // Volume wiederherstellen
             const vol = localStorage.getItem('tracklistify_volume');
@@ -365,12 +375,17 @@ document.addEventListener('alpine:init', () => {
         },
 
         async deleteSetContext() {
-            const set = this.ui.contextMenu.targetSet; 
+            const set = this.ui.contextMenu.targetSet;
             this.ui.contextMenu.show = false;
-            if(confirm(`Set "${set.name}" wirklich löschen?`)) { 
-                await fetch(`/api/sets/${set.id}`, { method: 'DELETE' }); 
-                this.fetchSets(); 
-                this.showDashboard(); 
+            if(confirm(`Set "${set.name}" wirklich löschen?`)) {
+                await fetch(`/api/sets/${set.id}`, { method: 'DELETE' });
+                this.sets = this.sets.filter(s => s.id !== set.id);
+                this.filteredSets = this.filteredSets.filter(s => s.id !== set.id);
+                if (this.activeSet && this.activeSet.id === set.id) {
+                    this.activeSet = null;
+                    this.tracks = [];
+                }
+                this.showDashboard();
             }
         },
 
@@ -546,6 +561,40 @@ document.addEventListener('alpine:init', () => {
         async fetchSets() { const res = await fetch('/api/sets'); this.sets = await res.json(); this.filteredSets = this.sets; },
         async fetchLikes() { const res = await fetch('/api/tracks/likes'); this.likedTracks = await res.json(); },
         async fetchRescan() { const res = await fetch('/api/tracks/rescan_candidates'); this.rescanCandidates = await res.json(); },
+        async fetchYoutube() {
+            const res = await fetch('/api/youtube/feeds');
+            const data = await res.json();
+            this.youtubeFeed = data.items || [];
+        },
+        async fetchProfile() {
+            try {
+                const res = await fetch('/api/auth/profile');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.ok) this.auth.username = data.username;
+                }
+            } catch(e) {}
+        },
+        async submitAuth() {
+            const url = this.auth.mode === 'login' ? '/api/auth/login' : '/api/auth/register';
+            this.auth.error = '';
+            const res = await fetch(url, {
+                method: 'POST',
+                body: JSON.stringify(this.auth.form)
+            });
+            const data = await res.json();
+            if (res.ok && data.ok) {
+                this.auth.username = data.username;
+                this.auth.form = { username: '', password: '' };
+                this.showToast('Angemeldet', data.username, 'info');
+            } else {
+                this.auth.error = data.error || 'Fehler';
+            }
+        },
+        async logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            this.auth.username = null;
+        },
         
         async toggleLike(track) {
             track.liked = !track.liked;

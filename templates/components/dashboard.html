@@ -65,7 +65,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                         <h3 class="font-bold text-gray-800">My Top Producers</h3>
@@ -115,6 +115,26 @@
                             </a>
                         </template>
                         <div x-show="dashboardStats.top_djs.length === 0" class="col-span-2 text-center text-xs text-gray-400 py-4">Noch keine DJ-Daten</div>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-br from-orange-50 via-white to-emerald-50 rounded-2xl border border-orange-100 shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b border-orange-100/70 bg-white/80 backdrop-blur flex items-center justify-between">
+                        <div>
+                            <h3 class="font-bold text-gray-800">YouTube Feed</h3>
+                            <p class="text-xs text-gray-500">Neue Uploads für deine Artists</p>
+                        </div>
+                        <svg class="w-5 h-5 text-orange-500" fill="currentColor" viewBox="0 0 24 24"><path d="M10 15l5.19-3L10 9v6zm11-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div class="divide-y divide-orange-100/60">
+                        <template x-for="item in youtubeFeed" :key="item.link">
+                            <a class="block px-6 py-3 hover:bg-orange-50/60 transition-colors" :href="item.link" target="_blank">
+                                <div class="text-sm font-semibold text-gray-900" x-text="item.title"></div>
+                                <div class="text-[11px] text-gray-500 mt-0.5" x-text="item.artist"></div>
+                                <div class="text-[10px] text-gray-400" x-text="item.published"></div>
+                            </a>
+                        </template>
+                        <div x-show="youtubeFeed.length === 0" class="px-6 py-4 text-xs text-gray-500">Noch keine passenden Videos gefunden.</div>
                     </div>
                 </div>
             </div>
