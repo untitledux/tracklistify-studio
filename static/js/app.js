@@ -13,7 +13,11 @@ document.addEventListener('alpine:init', () => {
         youtubeFeed: [],
 
         auth: {
-            username: null
+            username: null,
+            form: { username: '', password: '' },
+            mode: 'login',
+            error: '',
+            dropdownOpen: false
         },
         
         dashboardStats: {
@@ -577,9 +581,27 @@ document.addEventListener('alpine:init', () => {
                 }
             } catch(e) {}
         },
+        async submitAuth() {
+            const url = this.auth.mode === 'login' ? '/api/auth/login' : '/api/auth/register';
+            this.auth.error = '';
+            const res = await fetch(url, {
+                method: 'POST',
+                body: JSON.stringify(this.auth.form)
+            });
+            const data = await res.json();
+            if (res.ok && data.ok) {
+                this.auth.username = data.username;
+                this.auth.form = { username: '', password: '' };
+                this.auth.dropdownOpen = false;
+                this.showToast('Angemeldet', data.username, 'info');
+            } else {
+                this.auth.error = data.error || 'Fehler';
+            }
+        },
         async logout() {
             await fetch('/api/auth/logout', { method: 'POST' });
             this.auth.username = null;
+            this.auth.dropdownOpen = false;
         },
 
         ensureAuthenticated() {
