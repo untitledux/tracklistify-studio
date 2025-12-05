@@ -153,7 +153,7 @@ def profile_page():
 
 # --- API: Auth ---
 
-@auth_api.route("/register", methods=["POST"], endpoint="register")
+@auth_api.route("/register", methods=["POST"])
 def register_api():
     payload = parse_body(RegisterPayload)
     try:
@@ -164,7 +164,7 @@ def register_api():
     set_session(user)
     return jsonify({"ok": True, "user": user.model_dump()})
 
-@auth_api.route("/login", methods=["POST"], endpoint="login")
+@auth_api.route("/login", methods=["POST"])
 def login():
     payload = parse_body(LoginPayload)
     user = user_store.authenticate(payload.email, payload.password)
@@ -175,7 +175,7 @@ def login():
     set_session(user)
     return jsonify({"ok": True, "user": user.model_dump()})
 
-@auth_api.route("/profile", methods=["GET", "POST"], endpoint="profile")
+@auth_api.route("/profile", methods=["GET", "POST"])
 def profile():
     user, error_response = require_session_user()
     if error_response:
@@ -190,7 +190,7 @@ def profile():
         
     return jsonify({"ok": True, "user": user.model_dump()})
 
-@auth_api.route("/logout", methods=["POST"], endpoint="logout")
+@auth_api.route("/logout", methods=["POST"])
 def logout():
     session.clear()
     return jsonify({"ok": True})
