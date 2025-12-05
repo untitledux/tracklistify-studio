@@ -1,16 +1,20 @@
 from typing import Any, Dict, List, Literal, Optional
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, EmailStr, Field, HttpUrl
 
 
 class RegisterRequest(BaseModel):
-    username: str = Field(..., min_length=1)
-    password: str = Field(..., min_length=1)
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+    name: str | None = Field(default=None, min_length=1)
 
     model_config = {"extra": "forbid", "str_strip_whitespace": True}
 
 
-class LoginRequest(RegisterRequest):
-    pass
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=1)
+
+    model_config = {"extra": "forbid", "str_strip_whitespace": True}
 
 
 class ProfileUpdateRequest(BaseModel):

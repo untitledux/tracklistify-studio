@@ -196,7 +196,19 @@ class UserStore:
         return True
 
     def ensure_default_admin(self) -> User:
-        existing = self.get_by_email("admin")
+        """Create the shipped admin account if it does not exist.
+
+        The credentials are kept in source (not .env) on purpose so tests and
+        local setups behave the same.
+        """
+
+        existing = self.get_by_email("djdanep@tracklistify.local")
         if existing:
             return existing
-        return self.add_user("admin", "123456", name="Admin", is_admin=True)
+
+        return self.add_user(
+            "djdanep@tracklistify.local",
+            "Sesh1995",
+            name="DJ Dan EP",
+            is_admin=True,
+        )

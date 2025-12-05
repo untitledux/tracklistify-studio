@@ -19,7 +19,6 @@ from backend.storage import load_json_value
 from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, session
 from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, HTTPException
-from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 # Eigene Module
@@ -58,6 +57,29 @@ def parse_body(model_cls):
         return model_cls.model_validate(data)
     except ValidationError as exc:
         raise BadRequest(exc.errors())
+
+
+def get_current_user():
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+    user = user_store.get_by_id(user_id)
+    if not user:
+        session.clear()
+    return user
+
+
+def serialize_user(user):
+    return {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "dj_name": user.dj_name,
+        "avatar_url": user.avatar_url,
+        "soundcloud_url": user.soundcloud_url,
+        "is_admin": user.is_admin,
+        "favorites": user.favorites,
+    }
 
 
 def safe_path(base: str, *paths: str) -> str:
@@ -362,11 +384,11 @@ def require_session_user():
 @app.route("/api/auth/register", methods=["POST"])
 def register():
     data = parse_body(RegisterRequest)
-    username = data.username
+    email = data.email
     password = data.password
-
+    name = data.name
     try:
-        user = user_store.add_user(payload.email, payload.password, name=payload.name)
+        user = user_store.add_user(email, password, name=name)
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 409
 
@@ -377,10 +399,8 @@ def register():
 @app.route("/api/auth/login", methods=["POST"])
 def login():
     data = parse_body(LoginRequest)
-    username = data.username
-    password = data.password
-    user = database.get_user(username)
-    if not user or not check_password_hash(user["password_hash"], password):
+    user = user_store.authenticate(data.email, data.password)
+    if not user:
         return jsonify({"ok": False, "error": "Ungültige Zugangsdaten"}), 401
 
     set_session(user)
