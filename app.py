@@ -3,7 +3,16 @@ from functools import lru_cache
 from typing import Any, Dict
 
 import yt_dlp  # WICHTIG: pip install yt-dlp
-from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, session
+from flask import (
+    Blueprint,
+    Flask,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    session,
+)
 from pydantic import ValidationError
 from werkzeug.exceptions import BadRequest, HTTPException
 from werkzeug.utils import secure_filename
@@ -41,6 +50,9 @@ database.init_db()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
+
+# Blueprints
+auth_api = Blueprint("auth_api", __name__, url_prefix="/api/auth")
 
 # Initialize User Store & Create Admin
 user_store = UserStore()
@@ -141,7 +153,7 @@ def profile_page():
 
 # --- API: Auth ---
 
-@app.route("/api/auth/register", methods=["POST"], endpoint="api_auth_register")
+@auth_api.route("/register", methods=["POST"], endpoint="register")
 def register_api():
     payload = parse_body(RegisterPayload)
     try:
@@ -152,7 +164,7 @@ def register_api():
     set_session(user)
     return jsonify({"ok": True, "user": user.model_dump()})
 
-@app.route("/api/auth/login", methods=["POST"])
+@auth_api.route("/login", methods=["POST"], endpoint="login")
 def login():
     payload = parse_body(LoginPayload)
     user = user_store.authenticate(payload.email, payload.password)
@@ -163,7 +175,7 @@ def login():
     set_session(user)
     return jsonify({"ok": True, "user": user.model_dump()})
 
-@app.route("/api/auth/profile", methods=["GET", "POST"])
+@auth_api.route("/profile", methods=["GET", "POST"], endpoint="profile")
 def profile():
     user, error_response = require_session_user()
     if error_response:
@@ -178,10 +190,14 @@ def profile():
         
     return jsonify({"ok": True, "user": user.model_dump()})
 
-@app.route("/api/auth/logout", methods=["POST"])
+@auth_api.route("/logout", methods=["POST"], endpoint="logout")
 def logout():
     session.clear()
     return jsonify({"ok": True})
+
+
+# Register blueprints
+app.register_blueprint(auth_api)
 
 
 # --- API: Sets & Tracks ---
