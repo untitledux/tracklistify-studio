@@ -13,7 +13,7 @@ from flask import (
     send_from_directory,
     session,
 )
-from pydantic import ValidationError
+from pydantic import BaseModel, EmailStr, ValidationError
 from werkzeug.exceptions import BadRequest, HTTPException
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
@@ -56,7 +56,7 @@ auth_api = Blueprint("auth_api", __name__, url_prefix="/api/auth")
 
 # Initialize User Store & Create Admin
 user_store = UserStore()
-user_store.ensure_default_admin()
+ADMIN_LOGIN_EMAIL = user_store.ensure_default_admin().email
 
 # --- Helper Functions ---
 
@@ -166,14 +166,42 @@ def register_api():
 
 @auth_api.route("/login", methods=["POST"])
 def login():
-    payload = parse_body(LoginPayload)
+    data: Dict[str, Any] = {}
+    json_data = request.get_json(silent=True)
+    if isinstance(json_data, dict):
+        data.update(json_data)
+
+    for key in ("email", "password"):
+        if key not in data and key in request.form:
+            data[key] = request.form.get(key)
+
+    raw_email = str(data.get("email") or "").strip()
+    password = str(data.get("password") or "").strip()
+
+    class _AdminEmailModel(BaseModel):
+        email: EmailStr
+
+    try:
+        admin_email = _AdminEmailModel(email=os.getenv("ADMIN_EMAIL", ADMIN_LOGIN_EMAIL)).email
+    except ValidationError:
+        admin_email = ADMIN_LOGIN_EMAIL
+
+    if raw_email.lower() == "admin" or raw_email.lower() == os.getenv("ADMIN_EMAIL", "").lower():
+        raw_email = admin_email
+
+    try:
+        payload = LoginPayload(email=raw_email, password=password)
+    except ValidationError:
+        return jsonify({"ok": False, "error": "Invalid credentials"}), 401
+
     user = user_store.authenticate(payload.email, payload.password)
-    
+
     if not user:
         return jsonify({"ok": False, "error": "Invalid credentials"}), 401
 
     set_session(user)
-    return jsonify({"ok": True, "user": user.model_dump()})
+    role = "admin" if user.is_admin else "user"
+    return jsonify({"ok": True, "user": user.model_dump(), "role": role})
 
 @auth_api.route("/profile", methods=["GET", "POST"])
 def profile():
