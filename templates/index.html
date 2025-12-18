@@ -854,25 +854,41 @@
         <div class="library-stack">
             <div class="section-card">
                 <div class="section-heading">
-                    <span>Library Sets</span>
-                    <span class="hint" x-text="filteredSets.length + ' results'"></span>
+                    <span>Folders</span>
                 </div>
-                <div class="set-list">
-                    <template x-for="set in filteredSets" :key="set.id">
-                        <button @click="loadSet(set)"
-                                @contextmenu.prevent="openContextMenu($event, 'set', set)"
-                                class="set-row"
-                                :class="activeSet && activeSet.id === set.id ? 'contrast-active' : ''">
+                <div class="folder-list">
+                    <template x-for="folder in folders" :key="folder.id">
+                        <div
+                            class="folder"
+                            :class="folderHoverId === folder.id ? 'is-hovered' : ''"
+                            @dragenter="onFolderDragEnter(folder, $event)"
+                            @dragleave="onFolderDragLeave(folder)"
+                            @dragover.prevent="onFolderDragOver($event)"
+                            @drop="onDropToFolder(folder, $event)"
+                            @contextmenu.prevent="openFolderContextMenu($event, folder)"
+                        >
                             <div class="meta">
-                                <div class="title" x-text="set.name"></div>
-                                <div class="muted" x-text="formatDate(set.created_at)"></div>
+                                <div class="name" x-text="folder.name"></div>
+                                <div class="count" x-text="(folder.sets?.length || 0) + ' sets'"></div>
                             </div>
-                            <span class="pill" style="padding:6px 10px;" x-text="set.track_count + ' tracks'"></span>
-                        </button>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v10H3V7zm3-3h12v3H6z"/></svg>
+                        </div>
                     </template>
-                    <div x-show="sets.length === 0" class="hint">No sets yet.</div>
+                    <div x-show="folders.length === 0" class="hint">No folders yet.</div>
+                </div>
+                <div
+                    class="trash-zone"
+                    :class="trashHover ? 'is-hovered' : ''"
+                    @dragenter="onTrashDragEnter($event)"
+                    @dragover.prevent="onTrashDragEnter($event)"
+                    @dragleave="onTrashDragLeave"
+                    @drop="onDropToTrash"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                    <span>Drop here to delete</span>
                 </div>
             </div>
+
         </div>
     </aside>
 

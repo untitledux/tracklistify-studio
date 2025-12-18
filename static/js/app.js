@@ -318,7 +318,7 @@ document.addEventListener('alpine:init', () => {
                 const existing = this.sets.find(s => s.id === id);
                 if (!existing) {
                     this.sets = [setOrId, ...this.sets];
-                    this.filteredSets = this.sets;
+                    this.updateFilteredSets();
                 }
             } else {
                 this.activeSet = this.sets.find(s => s.id === id);
@@ -445,13 +445,19 @@ document.addEventListener('alpine:init', () => {
 
             await fetch(`/api/sets/${target.id}`, { method: 'DELETE' });
             this.sets = this.sets.filter(s => s.id !== target.id);
-            this.filteredSets = this.filteredSets.filter(s => s.id !== target.id);
+            this.folders = (this.folders || []).map(folder => ({
+                ...folder,
+                sets: (folder.sets || []).filter(id => id !== target.id)
+            }));
+            this.persistFoldersLocally();
 
             if (this.activeSet && this.activeSet.id === target.id) {
                 this.activeSet = null;
                 this.tracks = [];
             }
 
+            this.syncFolderAssignments();
+            this.updateFilteredSets();
             this.showDashboard();
             return true;
         },
@@ -496,11 +502,12 @@ document.addEventListener('alpine:init', () => {
 
             await fetch(`/api/sets/${set.id}`, { method: 'DELETE' });
             this.sets = this.sets.filter(s => s.id !== set.id);
-            this.filteredSets = this.filteredSets.filter(s => s.id !== set.id);
+            this.removeSetFromFolders(set.id);
             if (this.activeSet && this.activeSet.id === set.id) {
                 this.activeSet = null;
                 this.tracks = [];
             }
+            this.updateFilteredSets();
             this.showDashboard();
             return true;
         },
