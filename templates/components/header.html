@@ -10,13 +10,34 @@
         </div>
     </div>
 
-    <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" x-show="queueStatus.active">
-        <button @click="showQueueView()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 border border-orange-100 rounded-full">
-            <span class="relative flex h-2 w-2">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-orange-400"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
-            </span>
-            <span class="text-xs font-bold text-orange-700" x-text="getPhaseLabel(queueStatus.active.phase)">Processing</span>
+    <div class="flex-1 flex justify-center">
+        <button @click="showQueueView()"
+                class="hidden sm:flex items-center justify-center px-4 py-1.5 rounded-full border transition-all duration-300 cursor-pointer hover:shadow-md active:scale-95 group min-w-[180px] relative overflow-hidden"
+                :class="queueStatus.active ? 'bg-white border-gray-200' : 'bg-white border-gray-100'">
+
+            <template x-if="queueStatus.active">
+                <div class="absolute inset-0 opacity-20 origin-left transition-transform duration-300 ease-linear"
+                     :class="getPhaseColor(queueStatus.active.phase)"
+                     :style="'transform: scaleX(' + (queueStatus.active.progress / 100) + ')'"></div>
+            </template>
+
+            <div class="relative z-10 flex items-center gap-2">
+                <template x-if="queueStatus.active">
+                    <div class="flex items-center gap-2">
+                        <span class="relative flex h-2.5 w-2.5">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="getPhaseColor(queueStatus.active.phase)"></span>
+                          <span class="relative inline-flex rounded-full h-2.5 w-2.5" :class="getPhaseColor(queueStatus.active.phase)"></span>
+                        </span>
+                        <div class="flex flex-col items-start leading-none">
+                            <span class="text-xs font-bold text-gray-700" x-text="getPhaseLabel(queueStatus.active.phase)"></span>
+                            <span class="text-[9px] text-gray-400 font-mono" x-text="Math.round(queueStatus.active.progress) + '%'"></span>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="!queueStatus.active">
+                    <span class="text-xs font-medium text-gray-400 group-hover:text-gray-600">System bereit</span>
+                </template>
+            </div>
         </button>
     </div>
 
