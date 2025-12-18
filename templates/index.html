@@ -896,7 +896,7 @@
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h6l2 3h8v9H4z"/><circle cx="9" cy="13" r="2"/><circle cx="15" cy="13" r="2"/></svg>
                 </div>
             </div>
-            <div class="nav-progress">
+            <div class="nav-progress" x-show="queueStatus.active || queueStatus.history.length" x-cloak>
                 <button class="progress-button" @click="showQueueView()">
                     <div class="progress-track">
                         <div class="progress-fill" :style="'transform: scaleX(' + (queueProgressValue() / 100) + ')'"></div>
@@ -944,7 +944,11 @@
             </div>
         </div>
 
-        <div class="studio-hero">
+        <div x-show="currentView === 'queue'" x-cloak style="flex:1; display:flex; min-height:0;">
+            {% include 'components/queue_view.html' %}
+        </div>
+
+        <div class="studio-hero" x-show="currentView !== 'queue'" x-cloak>
             <div class="hero-copy">
                 <div class="hero-title">Curate &amp; perform</div>
                 <div class="hero-subtitle">Full-page workspace for organizing sets, folders, and tracklists.</div>
@@ -955,7 +959,7 @@
             </div>
         </div>
 
-        <div class="stat-row">
+        <div class="stat-row" x-show="currentView !== 'queue'" x-cloak>
             <div class="stat">
                 <span class="label">Sets</span>
                 <span class="value" x-text="dashboardStats.total_sets"></span>
@@ -974,7 +978,7 @@
             </div>
         </div>
 
-        <section class="content">
+        <section class="content" x-show="currentView !== 'queue'" x-cloak>
             <div class="section-header" style="padding-top:8px;">
                 <h2>Sets</h2>
                 <span class="hint">Right-click for quick actions</span>
