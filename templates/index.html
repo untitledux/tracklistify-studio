@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tracklistify Studio</title>
     <link rel="stylesheet" href="/static/css/tailwind.css">
+    <link rel="stylesheet" href="/static/css/style.css">
     <script defer src="/static/js/app.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,29 +76,32 @@
                                     {% include 'components/dashboard.html' %}
                                 </section>
 
-                                <section x-show="currentView === 'sets'" x-cloak class="h-full flex flex-col">
-                                    {% include 'components/main_view.html' %}
-                                </section>
+            <div class="flex-1 min-h-0 overflow-hidden">
+                <div class="flex-1 overflow-auto custom-scrollbar">
+                    <section x-show="currentView === 'dashboard'" x-cloak class="h-full flex flex-col">
+                        {% include 'components/dashboard.html' %}
+                    </section>
 
-                                <section x-show="currentView === 'queue'" x-cloak class="h-full flex flex-col">
-                                    {% include 'components/queue_view.html' %}
-                                </section>
+                    <section x-show="currentView === 'sets'" x-cloak class="h-full flex flex-col">
+                        {% include 'components/main_view.html' %}
+                    </section>
 
-                                <section x-show="currentView === 'rescan'" x-cloak class="h-full flex flex-col">
-                                    {% include 'components/rescan_view.html' %}
-                                </section>
+                    <section x-show="currentView === 'queue'" x-cloak class="h-full flex flex-col">
+                        {% include 'components/queue_view.html' %}
+                    </section>
 
-                                <section x-show="currentView === 'likes'" x-cloak class="h-full flex flex-col">
-                                    {% include 'components/main_likes.html' %}
-                                </section>
-                            </div>
-                        </div>
-                    </div>
+                    <section x-show="currentView === 'rescan'" x-cloak class="h-full flex flex-col">
+                        {% include 'components/rescan_view.html' %}
+                    </section>
+
+                    <section x-show="currentView === 'likes'" x-cloak class="h-full flex flex-col">
+                        {% include 'components/main_likes.html' %}
+                    </section>
                 </div>
-
-                {% include 'components/sidebar_likes.html' %}
             </div>
         </div>
+
+        {% include 'components/sidebar_likes.html' %}
     </div>
 
     {% include 'components/footer_player.html' %}
