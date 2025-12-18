@@ -1138,7 +1138,7 @@ document.addEventListener('alpine:init', () => {
             folder.name = next;
 
             try {
-                const res = await fetch(`/api/folders/${folder.id}`, {
+                fetch(`/api/folders/${folder.id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name: next })
