@@ -863,29 +863,6 @@
                 </div>
             </div>
 
-            <div class="section-card">
-                <div class="section-heading">
-                    <span>Library Sets</span>
-                    <span class="hint" x-text="filteredSets.length + ' results'"></span>
-                </div>
-                <div class="set-list">
-                    <template x-for="set in filteredSets" :key="set.id">
-                        <button @click="loadSet(set)"
-                                @contextmenu.prevent="openContextMenu($event, 'set', set)"
-                                draggable="true"
-                                @dragstart="onDragSet(set, $event)" @dragend="onDragEnd"
-                                class="set-row"
-                                :class="activeSet && activeSet.id === set.id ? 'contrast-active' : ''">
-                            <div class="meta">
-                                <div class="title" x-text="set.name"></div>
-                                <div class="muted" x-text="formatDate(set.created_at)"></div>
-                            </div>
-                            <span class="pill" style="padding:6px 10px;" x-text="set.track_count + ' tracks'"></span>
-                        </button>
-                    </template>
-                    <div x-show="sets.length === 0" class="hint">No sets yet.</div>
-                </div>
-            </div>
         </div>
     </aside>
 
