@@ -23,6 +23,11 @@
             --success: #16a34a;
             --radius: 16px;
             --shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+            --signal: #ff6b00;
+            --surface-strong: rgba(255, 255, 255, 0.06);
+            --surface-muted: rgba(255, 255, 255, 0.02);
+            --card-height: 320px;
+            --card-gap: 16px;
         }
 
         * { box-sizing: border-box; }
@@ -42,6 +47,10 @@
         a { color: inherit; text-decoration: none; }
         button { font-family: inherit; cursor: pointer; }
         [x-cloak] { display: none !important; }
+        .muted { color: var(--muted); }
+        .accent-hover { transition: all 0.2s ease; }
+        .accent-hover:hover { border-color: var(--accent); background: var(--glass); }
+        .contrast-active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.2); }
 
         .app-shell {
             display: grid;
@@ -155,6 +164,16 @@
             border: 1px solid var(--border);
             background: rgba(255, 255, 255, 0.02);
             transition: all 0.2s ease;
+        }
+
+        .folder.is-hovered, .folder-drop-target {
+            border-color: var(--accent);
+            background: rgba(255, 107, 0, 0.08);
+            box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.15);
+        }
+
+        .folder-quiet {
+            background: rgba(255, 255, 255, 0.02);
         }
 
         .folder.is-hovered {
@@ -363,8 +382,8 @@
 
         .set-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 14px;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: var(--card-gap);
         }
 
         .set-card {
@@ -373,8 +392,9 @@
             border-radius: 14px;
             border: 1px solid var(--border);
             background: linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(15, 19, 28, 0.7));
-            display: grid;
-            grid-template-rows: 140px 1fr;
+            display: flex;
+            flex-direction: column;
+            height: var(--card-height);
             cursor: pointer;
             transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
         }
@@ -385,10 +405,24 @@
             background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(15, 19, 28, 0.9));
         }
 
+        .set-card.is-dragging {
+            opacity: 0.35;
+            filter: contrast(0.85);
+            transform: scale(0.985);
+            border-color: var(--border);
+        }
+
+        .set-card.is-drop-target {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(255, 107, 0, 0.3);
+            filter: contrast(1.05);
+        }
+
         .set-thumb {
             background-size: cover;
             background-position: center;
             position: relative;
+            height: 160px;
         }
 
         .set-thumb::after {
@@ -413,7 +447,8 @@
         .set-meta {
             padding: 14px 16px 16px;
             display: grid;
-            gap: 6px;
+            gap: 8px;
+            flex: 1;
         }
 
         .set-pill {
@@ -439,6 +474,24 @@
             letter-spacing: 0.08em;
         }
 
+        .set-progress {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 107, 0, 0.12);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .set-progress span {
+            display: block;
+            height: 100%;
+            background: linear-gradient(90deg, var(--signal), var(--accent-strong));
+            box-shadow: 0 8px 18px rgba(255, 107, 0, 0.32);
+            transition: width 0.25s ease;
+        }
+
         .set-footer {
             display: flex;
             align-items: center;
@@ -449,11 +502,27 @@
             letter-spacing: 0.08em;
         }
 
+        .set-footer .tag {
+            padding: 6px 10px;
+            border-radius: 10px;
+            background: var(--surface-muted);
+            border: 1px solid var(--border);
+            color: var(--text);
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            font-size: 11px;
+        }
+
         .track-panel {
             padding: 16px;
             border-radius: 14px;
             border: 1px solid var(--border);
             background: rgba(255, 255, 255, 0.03);
+        }
+
+        .track-panel.focused {
+            border-color: rgba(255, 107, 0, 0.4);
+            box-shadow: 0 16px 40px rgba(255, 107, 0, 0.15);
         }
 
         .track-panel-header {
@@ -660,12 +729,14 @@
             .app-shell { grid-template-columns: 1fr; }
             .library { order: 2; }
             .main { order: 1; }
+            .set-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
 
         @media (max-width: 720px) {
             .track { grid-template-columns: 1fr; }
             .app-shell { padding: 14px; }
             .top-nav { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .set-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -698,7 +769,7 @@
                 <template x-for="folder in folders" :key="folder.id">
                     <div
                         class="flex items-center justify-between gap-2 px-3 py-2 border text-[12px] font-bold transition-all duration-150"
-                        :class="folderHoverId === folder.id ? 'contrast-active ring-2 ring-black' : 'accent-hover'"
+                        :class="folderHoverId === folder.id ? 'folder-drop-target contrast-active' : 'folder-quiet accent-hover'"
                         @dragenter="onFolderDragEnter(folder, $event)"
                         @dragleave="onFolderDragLeave(folder)"
                         @dragover.prevent="onFolderDragOver($event)"
@@ -735,7 +806,7 @@
                 <div class="space-y-2">
                     <template x-for="folder in folders" :key="folder.id">
                         <div class="px-3 py-2 border flex items-center justify-between text-[11px] gap-3 transition-colors"
-                             :class="folderHoverId === folder.id ? 'contrast-active' : 'accent-hover'"
+                             :class="folderHoverId === folder.id ? 'folder-drop-target contrast-active' : 'folder-quiet accent-hover'"
                              @contextmenu.prevent="openFolderContextMenu($event, folder)"
                              @dragenter.prevent="onFolderDragEnter(folder, $event)" @dragover.prevent="onFolderDragOver($event)" @dragleave="onFolderDragLeave(folder)"
                              @drop.prevent="onDropToFolder(folder, $event)">
@@ -759,7 +830,7 @@
 
             <div class="py-2">
                 <template x-for="set in filteredSets" :key="set.id">
-                    <button @click="loadSet(set)"
+                    <button @click="focusOnSet(set)"
                             @contextmenu.prevent="openContextMenu($event, 'set', set)"
                             draggable="true"
                             @dragstart="onDragSet(set, $event)" @dragend="onDragEnd"
@@ -846,7 +917,7 @@
                                     draggable="true"
                                     @dragstart="onDragSet(item, $event)"
                                     @dragend="onDragEnd"
-                                    @click="loadSet(item.id)">
+                                    @click="focusOnSet(item.id)">
                                 <div class="flex flex-col">
                                     <span class="text-sm font-bold" x-text="item.name"></span>
                                     <span class="text-[10px] muted" x-text="formatDate(item.created_at)"></span>
@@ -879,17 +950,29 @@
 
         <div class="content">
             <div class="section-header">
-                <h2>Sets</h2>
-                <span class="hint">Right-click for quick actions</span>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <h2 x-text="ui.trackViewOnly ? 'Tracklist' : 'Sets'"></h2>
+                    <span class="hint" x-show="!ui.trackViewOnly">Right-click for quick actions</span>
+                    <span class="hint" x-show="ui.trackViewOnly && activeSet" x-text="activeSet.name"></span>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button class="ghost-button" x-show="ui.trackViewOnly" @click="resetTrackView()">Show Set Grid</button>
+                    <button class="ghost-button" x-show="activeSet" @click="copyTracklist">Copy List</button>
+                </div>
             </div>
-            <div class="set-grid">
+            <div class="set-grid" x-show="!ui.trackViewOnly">
                 <template x-for="set in filteredSets" :key="set.id">
                     <div class="set-card"
                          draggable="true"
                          @dragstart="onDragSet(set, $event)"
                          @dragend="onDragEnd"
-                         @click="loadSet(set)"
-                         @contextmenu.prevent="openSetContextMenu($event, set)">
+                         @dragenter.prevent="onCardDragEnter(set)"
+                         @dragover.prevent="onCardDragOver($event)"
+                         @dragleave="onCardDragLeave(set)"
+                         @drop.prevent="onCardDrop(set, $event)"
+                         @click="focusOnSet(set)"
+                         @contextmenu.prevent="openSetContextMenu($event, set)"
+                         :class="setCardClasses(set)">
                         <div class="set-thumb" :style="set.thumbnail ? `background-image:url(${set.thumbnail})` : ''">
                             <div class="fallback" x-show="!set.thumbnail" x-text="(set.artists || set.dj_names || set.name || 'SET').slice(0, 6).toUpperCase()"></div>
                         </div>
@@ -900,10 +983,13 @@
                             </div>
                             <div class="set-title" x-text="set.name"></div>
                             <div class="set-artist" x-text="set.artists || set.dj_names || 'Unknown Artist'"></div>
+                            <div class="set-progress" aria-hidden="true">
+                                <span :style="`width:${setProgress(set)}%`"></span>
+                            </div>
                         </div>
                         <div class="set-footer">
                             <span x-text="formatDate(set.created_at)"></span>
-                            <span x-text="set.event || 'Ready'"></span>
+                            <span class="tag" x-text="set.event || setFolderLabel(set)"></span>
                         </div>
                     </div>
                 </template>
@@ -912,15 +998,13 @@
                 </div>
             </div>
 
-            <div class="track-panel">
+            <div class="track-panel" :class="ui.trackViewOnly && activeSet ? 'focused' : ''">
                 <div class="track-panel-header">
                     <div class="title">
                         <span>Active Set</span>
                         <span x-text="activeSet ? activeSet.name : 'Select a set to view tracks'"></span>
                     </div>
-                    <div class="controls" style="display:flex; gap:8px;">
-                        <button class="ghost-button" @click="copyTracklist" x-show="activeSet">Copy List</button>
-                    </div>
+                    <div class="controls" style="display:flex; gap:8px;"></div>
                 </div>
                 <div class="tracklist" x-show="activeSet">
                     <template x-for="(track, index) in tracks" :key="track.id">
@@ -970,15 +1054,15 @@
 
     <template x-if="ui.contextMenu.type === 'set'">
         <div class="py-1 space-y-1">
-            <button @click="openEditSetModal()" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2">
+            <button @click="handleContextAction('edit')" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 <span>Info & Tags</span>
             </button>
-            <button @click="renameSetContext()" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2">
+            <button @click="handleContextAction('rename')" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                 <span>Umbenennen</span>
             </button>
-            <button @click="promptMoveSetContext()" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2">
+            <button @click="handleContextAction('move')" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h7" /></svg>
                 <span>In Ordner verschieben</span>
             </button>
@@ -991,11 +1075,11 @@
                     </button>
                 </template>
             </div>
-            <button @click="rescanSetContext()" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2">
+            <button @click="handleContextAction('rescan')" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                 <span>Neu analysieren</span>
             </button>
-            <button @click="deleteSetContext()" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2 text-red-600">
+            <button @click="handleContextAction('delete')" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2 text-red-600">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                 <span>Set löschen</span>
             </button>
@@ -1004,11 +1088,11 @@
 
     <template x-if="ui.contextMenu.type === 'folder'">
         <div class="py-1 space-y-1">
-            <button @click="renameFolderContext()" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2">
+            <button @click="handleContextAction('rename')" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2" /></svg>
                 <span>Ordner umbenennen</span>
             </button>
-            <button @click="deleteFolderContext()" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2 text-red-600">
+            <button @click="handleContextAction('delete')" class="w-full text-left px-4 py-2 text-[12px] hover:bg-gray-100 flex items-center gap-2 text-red-600">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg>
                 <span>Ordner löschen</span>
             </button>
