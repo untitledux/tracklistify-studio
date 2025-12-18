@@ -14,8 +14,10 @@ document.addEventListener('alpine:init', () => {
         rescanCandidates: [],
         youtubeFeed: [],
         folders: [],
+        activeFolderId: null,
         draggingSet: null,
         folderHoverId: null,
+        folderForm: { open: false, name: '' },
 
         auth: {
             user: null,
@@ -126,8 +128,7 @@ document.addEventListener('alpine:init', () => {
 
             // Suche Watcher
             this.$watch('search', val => {
-                if(!val) this.filteredSets = this.sets;
-                else this.filteredSets = this.sets.filter(s => s.name.toLowerCase().includes(val.toLowerCase()));
+                this.updateFilteredSets();
             });
             
             // Player Init
@@ -588,8 +589,8 @@ document.addEventListener('alpine:init', () => {
         async fetchSets() { 
             const res = await fetch('/api/sets'); 
             this.sets = await res.json(); 
-            this.filteredSets = this.sets; 
             this.syncFolderAssignments(); 
+            this.updateFilteredSets();
         },
         async fetchLikes() { const res = await fetch('/api/tracks/likes'); this.likedTracks = await res.json(); },
         async fetchPurchases() { const res = await fetch('/api/tracks/purchases'); this.purchasedTracks = await res.json(); },
@@ -774,6 +775,45 @@ document.addEventListener('alpine:init', () => {
         // =====================================================================
         // FOLDER MANAGEMENT
         // =====================================================================
+        defaultFolderName() {
+            return `Ordner ${ (this.folders?.length || 0) + 1 }`;
+        },
+
+        resetFolderForm() {
+            this.folderForm.name = this.defaultFolderName();
+        },
+
+        updateFilteredSets() {
+            const searchTerm = (this.search || '').toLowerCase();
+            let scopedSets = Array.isArray(this.sets) ? [...this.sets] : [];
+
+            if (this.activeFolderId) {
+                const activeFolder = (this.folders || []).find(folder => folder.id === this.activeFolderId);
+                if (!activeFolder) {
+                    this.activeFolderId = null;
+                } else {
+                    const allowedIds = new Set((activeFolder.sets || []).map(item => typeof item === 'object' ? item.id : item));
+                    scopedSets = scopedSets.filter(set => allowedIds.has(set.id));
+                }
+            }
+
+            if (searchTerm) {
+                scopedSets = scopedSets.filter(set => set.name.toLowerCase().includes(searchTerm));
+            }
+
+            this.filteredSets = scopedSets;
+        },
+
+        toggleFolderForm() {
+            this.folderForm.open = !this.folderForm.open;
+            if (this.folderForm.open) this.resetFolderForm();
+        },
+
+        selectFolder(folder) {
+            this.activeFolderId = this.activeFolderId === folder.id ? null : folder.id;
+            this.updateFilteredSets();
+        },
+
         async loadFolders() {
             try {
                 const res = await fetch('/api/folders');
@@ -783,6 +823,7 @@ document.addEventListener('alpine:init', () => {
                     this.ensureFolderStructure();
                     this.syncFolderAssignments();
                     this.persistFoldersLocally();
+                    this.resetFolderForm();
                     return;
                 }
             } catch (e) {}
@@ -791,6 +832,7 @@ document.addEventListener('alpine:init', () => {
             this.folders = cached ? JSON.parse(cached) : [];
             this.ensureFolderStructure();
             this.syncFolderAssignments();
+            this.resetFolderForm();
         },
 
         ensureFolderStructure() {
@@ -822,13 +864,18 @@ document.addEventListener('alpine:init', () => {
             });
 
             this.persistFoldersLocally();
+            this.updateFilteredSets();
         },
 
         async createFolder() {
-            const defaultName = `Ordner ${this.folders.length + 1}`;
-            const name = prompt('Ordnername', defaultName) || defaultName;
-            const optimisticFolder = { id: `local-${Date.now()}`, name, sets: [] };
-            let created = optimisticFolder;
+            const name = (this.folderForm.name || '').trim() || this.defaultFolderName();
+            const optimisticId = `local-${Date.now()}`;
+            const optimisticFolder = { id: optimisticId, name, sets: [] };
+            this.folders = [optimisticFolder, ...this.folders];
+            this.ensureFolderStructure();
+            this.persistFoldersLocally();
+            this.activeFolderId = optimisticId;
+            this.updateFilteredSets();
 
             try {
                 const res = await fetch('/api/folders', { 
@@ -838,14 +885,21 @@ document.addEventListener('alpine:init', () => {
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    created = data.folder || data;
+                    const created = data.folder || data;
                     created.sets = created.sets || [];
+                    this.folders = this.folders.map(folder => folder.id === optimisticId ? created : folder);
+                    this.activeFolderId = created.id;
+                    this.ensureFolderStructure();
+                    this.syncFolderAssignments();
                 }
-            } catch (e) {}
-
-            this.folders = [created, ...this.folders];
-            this.ensureFolderStructure();
-            this.persistFoldersLocally();
+            } catch (e) {
+                this.persistFoldersLocally();
+            } finally {
+                this.resetFolderForm();
+                this.folderForm.open = false;
+                this.persistFoldersLocally();
+                this.updateFilteredSets();
+            }
         },
 
         onDragSet(set, event) {
@@ -899,6 +953,7 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {}
 
             this.persistFoldersLocally();
+            this.updateFilteredSets();
         },
 
         isProducerFavorite(producerId) {
