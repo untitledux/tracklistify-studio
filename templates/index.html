@@ -88,6 +88,21 @@
         a:hover { color: var(--swiss-accent); }
 
         .avatar-ring { border-radius: 9999px !important; border: 2px solid var(--swiss-ink); }
+
+        .glass-card {
+            border: 1.5px solid var(--swiss-muted);
+            background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.6));
+            box-shadow: 0 16px 36px rgba(0,0,0,0.06);
+            transition: transform 0.18s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .glass-card:hover { transform: translateY(-2px); border-color: var(--swiss-ink); box-shadow: 0 18px 44px rgba(0,0,0,0.1); }
+        .glass-card.is-active { border-color: var(--swiss-ink); box-shadow: 0 18px 44px rgba(0,0,0,0.12); background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,85,0,0.1)); }
+
+        .glass-thumb { height: 160px; background-size: cover; background-position: center; position: relative; display: flex; align-items: center; justify-content: center; }
+        .glass-thumb .thumb-fallback { font-size: 2rem; font-weight: 800; color: var(--swiss-ink); background: color-mix(in srgb, var(--swiss-muted) 80%, var(--swiss-bg)); width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+
+        .folder-chip { border: 1px dashed var(--swiss-muted); padding: 0.25rem 0.5rem; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.08em; }
+        .drop-target { border-style: dashed; background: color-mix(in srgb, var(--swiss-accent) 8%, var(--swiss-bg)); }
     </style>
 </head>
 <body class="h-full flex flex-col" x-data="tracklistify()">
@@ -220,24 +235,17 @@
         <div class="flex-1 overflow-auto">
             <section x-show="currentView === 'dashboard'" class="p-6 space-y-4" x-cloak>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="tile">
-                        <strong>SETS</strong>
-                        <span class="value" x-text="dashboardStats.total_sets"></span>
-                    </div>
-                    <div class="tile">
-                        <strong>TRACKS</strong>
-                        <span class="value" x-text="dashboardStats.total_tracks"></span>
-                    </div>
-                    <div class="tile">
-                        <strong>LIKES</strong>
-                        <span class="value" x-text="dashboardStats.total_likes"></span>
-                    </div>
-                    <div class="tile">
-                        <strong>DISCOVERY</strong>
-                        <span class="value" x-text="dashboardStats.discovery_rate + '%' "></span>
-                    </div>
+                    <template x-for="stat in statHighlights()" :key="stat.key">
+                        <div class="glass-card p-4 flex flex-col gap-2">
+                            <span class="text-[10px] font-bold" x-text="stat.label"></span>
+                            <span class="text-2xl font-extrabold leading-tight" x-text="stat.value"></span>
+                            <div class="h-1 w-full" style="background: color-mix(in srgb, var(--swiss-muted) 70%, var(--swiss-bg));">
+                                <div class="h-full" :style="stat.key === 'discovery' ? 'background: var(--swiss-accent); width: 100%;' : 'background: var(--swiss-ink); width: 100%;'"></div>
+                            </div>
+                        </div>
+                    </template>
                 </div>
-                <div class="tile">
+                <div class="glass-card p-4">
                     <div class="text-[10px] font-bold mb-2">RECENT SETS</div>
                     <div class="divide-y divide-swiss">
                         <template x-for="item in dashboardStats.recent_sets" :key="item.id">
@@ -261,6 +269,75 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <button @click="copyTracklist" class="swiss-button text-[11px]" x-show="activeSet">COPY LIST</button>
+                    </div>
+                </div>
+                <div class="px-6 py-4 space-y-4 border-b bg-[color-mix(in_srgb,_var(--swiss-bg)_98%,_var(--swiss-muted))]">
+                    <div class="flex items-center justify-between">
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold">SET CARDS</span>
+                            <span class="text-[10px] muted" x-text="filteredSets.length + ' RESULTS'"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button @click="fetchSets()" class="swiss-button text-[10px]">REFRESH</button>
+                            <button @click="createFolder" class="swiss-button text-[10px]">NEW FOLDER</button>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+                        <template x-for="set in filteredSets" :key="'grid-' + set.id">
+                            <article class="glass-card cursor-pointer h-full"
+                                     :class="activeSet && activeSet.id === set.id ? 'is-active' : ''"
+                                     draggable="true"
+                                     @dragstart="onDragSet(set, $event)"
+                                     @dragend="onDragEnd"
+                                     @click="loadSet(set)">
+                                <div class="glass-thumb" :style="setCardBackground(set)">
+                                    <div class="thumb-fallback" x-show="!hasSetThumbnail(set)">
+                                        <span x-text="(set.name || 'SET')[0]"></span>
+                                    </div>
+                                </div>
+                                <div class="p-3 space-y-2">
+                                    <div class="flex items-center justify-between text-[10px] font-bold">
+                                        <span class="pill" x-text="formatDate(set.created_at) || 'NEW'"></span>
+                                        <span x-text="(set.track_count || 0) + ' TRACKS'"></span>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <h3 class="text-sm font-bold leading-tight truncate" x-text="set.name"></h3>
+                                        <p class="text-[11px] muted truncate" x-text="set.artists || 'UNKNOWN ARTIST'"></p>
+                                    </div>
+                                    <div class="flex items-center justify-between text-[10px]">
+                                        <span class="flex items-center gap-2" :class="set.folder_id ? '' : 'opacity-60'">
+                                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h5l2 2h11v8a2 2 0 01-2 2H3a2 2 0 01-2-2V9a2 2 0 012-2z"/></svg>
+                                            <span class="folder-chip" x-text="setFolderLabel(set)"></span>
+                                        </span>
+                                        <span class="pill" x-text="set.event || 'NO EVENT'"></span>
+                                    </div>
+                                </div>
+                            </article>
+                        </template>
+                    </div>
+                    <div x-show="!filteredSets.length" class="text-[12px] muted">NO SETS AVAILABLE</div>
+                    <div class="flex gap-3 overflow-x-auto pb-1 pt-2">
+                        <template x-for="folder in folders" :key="folder.id">
+                            <div class="glass-card min-w-[220px] flex flex-col gap-2"
+                                 :class="folderHoverId === folder.id ? 'drop-target' : 'border-dashed'"
+                                 @dragenter="onFolderDragEnter(folder, $event)"
+                                 @dragleave="onFolderDragLeave(folder)"
+                                 @dragover="onFolderDragOver"
+                                 @drop="onDropToFolder(folder, $event)">
+                                <div class="px-3 pt-3 flex items-center justify-between">
+                                    <div class="text-sm font-bold truncate" x-text="folder.name"></div>
+                                    <span class="text-[10px] pill" x-text="(folder.sets?.length || 0) + ' SETS'"></span>
+                                </div>
+                                <div class="px-3 pb-3 text-[11px] muted leading-snug">
+                                    <span x-text="folder.sets?.length ? 'Drop a set to move it here.' : 'Drop a set to add it here.'"></span>
+                                </div>
+                            </div>
+                        </template>
+                        <button class="glass-card min-w-[180px] p-3 text-left text-[11px] font-bold flex flex-col justify-center gap-1"
+                                @click="createFolder">
+                            <span class="text-sm font-extrabold">+ NEW FOLDER</span>
+                            <span class="muted text-[10px]">ORGANIZE SETS</span>
+                        </button>
                     </div>
                 </div>
                 <div class="flex-1 overflow-auto">

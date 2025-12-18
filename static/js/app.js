@@ -980,6 +980,31 @@ document.addEventListener('alpine:init', () => {
             return 'Verarbeite...';
         },
 
+        statHighlights() {
+            return [
+                { key: 'sets', label: 'SETS', value: this.dashboardStats.total_sets || 0 },
+                { key: 'tracks', label: 'TRACKS', value: this.dashboardStats.total_tracks || 0 },
+                { key: 'likes', label: 'LIKES', value: this.dashboardStats.total_likes || 0 },
+                { key: 'discovery', label: 'DISCOVERY', value: (this.dashboardStats.discovery_rate || 0) + '%' }
+            ];
+        },
+
+        hasSetThumbnail(set) {
+            return Boolean(set?.thumbnail || set?.thumbnail_url);
+        },
+
+        setCardBackground(set) {
+            const thumb = set?.thumbnail || set?.thumbnail_url;
+            if (!thumb) return '';
+            return `background-image: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.55)), url('${thumb}')`;
+        },
+
+        setFolderLabel(set) {
+            if (!set?.folder_id) return 'NO FOLDER';
+            const match = (this.folders || []).find(f => f.id === set.folder_id);
+            return match ? match.name : 'NO FOLDER';
+        },
+        
         cleanLogMessage(msg) {
             const parts = msg.split(' - ');
             const level = parts[0]?.toLowerCase();
