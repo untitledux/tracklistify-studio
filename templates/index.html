@@ -46,7 +46,44 @@
             </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto">
+        <div class="flex-1 overflow-y-auto space-y-0">
+            <div class="swiss-section space-y-3">
+                <div class="flex items-center justify-between text-[11px] font-bold">
+                    <span>LIBRARY</span>
+                    <button @click="toggleFolderForm" class="nav-button px-2 py-1 text-[10px]" title="New Folder">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6"/></svg>
+                        <span class="sr-only">New Folder</span>
+                    </button>
+                </div>
+
+                <div x-show="folderForm.open" x-transition class="p-3 border bg-white/80 space-y-2">
+                    <div class="flex items-center gap-2 text-[10px] font-bold">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h4l2 2h10a1 1 0 011 1v7a2 2 0 01-2 2H6a2 2 0 01-2-2V7z"/></svg>
+                        <span>NEW FOLDER</span>
+                    </div>
+                    <form @submit.prevent="createFolder" class="flex items-center gap-2">
+                        <input type="text" x-model="folderForm.name" :placeholder="defaultFolderName()" class="swiss-input text-[11px]">
+                        <button type="submit" class="swiss-button text-[10px] px-3 py-2 flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <span>CREATE</span>
+                        </button>
+                    </form>
+                </div>
+
+                <div class="border divide-y divide-swiss">
+                    <template x-for="folder in folders" :key="folder.id">
+                        <button @click="selectFolder(folder)" @dragenter="onFolderDragEnter(folder, $event)" @dragleave="onFolderDragLeave(folder)" @dragover.prevent="onFolderDragOver($event)" @drop="onDropToFolder(folder, $event)" class="w-full text-left px-3 py-2 flex items-center justify-between text-[11px] font-bold transition-all" :class="[(activeFolderId === folder.id) ? 'contrast-active' : '', folderHoverId === folder.id ? 'accent-hover' : '']">
+                            <div class="flex items-center gap-2 truncate">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h4l2 2h10a1 1 0 011 1v7a2 2 0 01-2 2H6a2 2 0 01-2-2V7z"/></svg>
+                                <span class="truncate" x-text="folder.name"></span>
+                            </div>
+                            <span class="text-[10px] pill" x-text="(folder.sets?.length || 0) + ' SETS'"></span>
+                        </button>
+                    </template>
+                    <div x-show="folders.length === 0" class="px-3 py-4 text-[11px] muted">NO FOLDERS</div>
+                </div>
+            </div>
+
             <template x-for="set in filteredSets" :key="set.id">
                 <button @click="loadSet(set)" class="w-full text-left px-4 py-3 border-b last:border-b-0 transition-all duration-150"
                         :class="activeSet && activeSet.id === set.id ? 'contrast-active' : ''">
