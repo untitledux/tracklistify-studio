@@ -79,28 +79,6 @@
             <div x-show="sets.length === 0" class="px-4 py-6 text-[12px] text-gray-500">NO SETS YET</div>
         </div>
 
-        <div class="border-t border-gray-200 p-4 flex items-center gap-3 glass-panel">
-            <div class="w-12 h-12 avatar-ring overflow-hidden bg-white flex items-center justify-center">
-                <template x-if="profile.avatar_url">
-                    <img :src="profile.avatar_url" alt="Avatar" class="w-full h-full object-cover rounded-full">
-                </template>
-                <template x-if="!profile.avatar_url">
-                    <span class="text-sm font-bold" x-text="(profile.display_name || (auth.user ? (auth.user.name || auth.user.dj_name || auth.user.email) : 'DJ'))[0]"></span>
-                </template>
-            </div>
-            <div class="flex-1 leading-tight">
-                <div class="text-[12px] font-bold" x-text="profile.display_name || (auth.user ? (auth.user.name || auth.user.dj_name || auth.user.email) : 'GUEST')"></div>
-                <div class="text-[10px] text-gray-500 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 14.5l8-5v10l-8-5z"/></svg>
-                    <span x-text="profile.dj_name || 'NO DJ NAME'"></span>
-                    <a :href="profile.soundcloud_url || '#'" target="_blank" class="flex items-center gap-1 underline" :class="profile.soundcloud_url ? '' : 'pointer-events-none opacity-40'">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.5A2.5 2.5 0 005.5 20H19a2 2 0 001.995-1.85L21 18a2 2 0 00-2-2h-.016A5.5 5.5 0 0013.5 5.5c-1.408 0-2.69.513-3.676 1.36a3.5 3.5 0 00-4.826 3.19A3.5 3.5 0 003 13.5v4z"/></svg>
-                        <span>SC</span>
-                    </a>
-                </div>
-                <button @click="ui.showProfileModal = true" class="mt-2 px-2 py-1 border border-gray-900 text-[10px] font-bold">EDIT PROFILE</button>
-            </div>
-        </div>
     </aside>
 
     <div class="flex-1 flex flex-col min-w-0">
@@ -150,6 +128,10 @@
                                     <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A10 10 0 1118.88 17.8 7 7 0 005 17.8z"/></svg>
                                     Profile
                                 </a>
+                                <button type="button" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700 text-left" @click="ui.showProfileModal = true; auth.dropdownOpen = false">
+                                    <svg class="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5h9m0 0v9m0-9L9 16l-4 1 1-4L16 4z"/></svg>
+                                    Edit Profile
+                                </button>
                                 <button class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50 text-sm text-red-600 text-left" @click="logout()">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 11-4 0v-1m4-10V5a2 2 0 10-4 0v1"/></svg>
                                     Logout
