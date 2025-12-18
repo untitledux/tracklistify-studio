@@ -39,13 +39,15 @@
             <p id="registerError" class="text-sm text-red-400"></p>
         </form>
 
-        <p class="mt-4 text-sm text-slate-400 text-center">Die Default-Creds bleiben: <strong>admin / 123456</strong>.</p>
+        <p class="mt-4 text-sm text-slate-400 text-center">Default-Admin bleibt aktiv: <strong>admin@tracklistify.com / 123456</strong>.</p>
     </div>
 </div>
 
 <script>
     const form = document.getElementById('registerForm');
     const errorEl = document.getElementById('registerError');
+    const params = new URLSearchParams(window.location.search);
+    const redirectTarget = params.get('next');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -65,7 +67,7 @@
         const data = await res.json();
 
         if (res.ok && data.ok) {
-            window.location.href = '/';
+            window.location.href = redirectTarget || '/';
         } else {
             errorEl.textContent = data.error || 'Registrierung fehlgeschlagen';
         }

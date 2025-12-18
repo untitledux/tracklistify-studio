@@ -9,6 +9,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from config import USERS_JSON_PATH
 from services.atomic_storage import AtomicJSONStorage
 
+DEFAULT_ADMIN_EMAIL = "admin@tracklistify.com"
+DEFAULT_ADMIN_PASSWORD = "123456"
+
 # Load environment variables (.env) immediately
 load_dotenv()
 
@@ -166,6 +169,9 @@ class UserStore:
         if "password" in updates and updates["password"]:
             user.hashed_password = generate_password_hash(str(updates["password"]))
 
+        if "is_admin" in updates:
+            user.is_admin = bool(updates.get("is_admin"))
+
         users[idx] = user
         self._save_users(users)
         return user
@@ -199,6 +205,33 @@ class UserStore:
         self._save_users(users)
         return True
 
+    def _ensure_admin_account(self, email: str, password: str) -> Optional[User]:
+        existing = self.get_by_email(email)
+
+        if existing:
+            requires_save = False
+
+            if password and not check_password_hash(existing.hashed_password, password):
+                existing.hashed_password = generate_password_hash(password.strip())
+                requires_save = True
+
+            if not existing.is_admin:
+                existing.is_admin = True
+                requires_save = True
+
+            if requires_save:
+                users = self._load_users()
+                idx = self._find_index_by_id(users, existing.id)
+                if idx is not None:
+                    users[idx] = existing
+                    self._save_users(users)
+            return existing
+
+        try:
+            return self.add_user(email, password, name="Admin", is_admin=True)
+        except ValueError:
+            return self.get_by_email(email)
+
     def ensure_default_admin(self) -> User:
         # Lade Credentials aus .env oder nutze Fallback (nur lokal sicher)
         raw_email = os.getenv("ADMIN_EMAIL")
@@ -208,19 +241,29 @@ class UserStore:
             email: EmailStr
 
         try:
-            email = _AdminEmailModel(email=raw_email).email if raw_email else "admin@tracklistify.com"
+            env_email = _AdminEmailModel(email=raw_email).email if raw_email else None
         except ValidationError:
-            email = "admin@tracklistify.com"
+            env_email = None
 
-        password = raw_password.strip() if raw_password and raw_password.strip() else "123456"
+        env_password = raw_password.strip() if raw_password and raw_password.strip() else None
 
-        # Prüfe, ob genau dieser Admin schon da ist
-        existing = self.get_by_email(email)
-        if existing:
-            return existing
+        admin_targets = []
+        if env_email:
+            admin_targets.append((env_email, env_password or DEFAULT_ADMIN_PASSWORD))
+        admin_targets.append((DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD))
 
-        try:
-            return self.add_user(email, password, name="Admin", is_admin=True)
-        except ValueError:
-            # Falls add_user fehlschlägt, weil User existiert (Race Condition), holen wir ihn
-            return self.get_by_email(email)
+        ensured_admin: Optional[User] = None
+        seen = set()
+
+        for email, password in admin_targets:
+            if not email or email in seen:
+                continue
+            seen.add(email)
+            candidate = self._ensure_admin_account(email, password)
+            if ensured_admin is None and candidate is not None:
+                ensured_admin = candidate
+
+        # Fallback: Wenn nichts angelegt werden konnte, versuche den Default
+        if ensured_admin:
+            return ensured_admin
+        return self._ensure_admin_account(DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD)
