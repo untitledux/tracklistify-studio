@@ -223,8 +223,7 @@ def init_db():
         "tags": "TEXT",
         "dj_id": "INTEGER",
         "soundcloud_url": "TEXT",
-        "label_id": "INTEGER",
-        "thumbnail_url": "TEXT"
+        "label_id": "INTEGER"
     }
 
     for col, dtype in new_set_cols.items():
@@ -241,8 +240,7 @@ def init_db():
         "flag": "INTEGER DEFAULT 0", "orig_artist": "TEXT", "orig_title": "TEXT",
         "needs_rescan": "INTEGER DEFAULT 0", "last_rescan_at": "TEXT",
         "liked": "INTEGER DEFAULT 0", "purchased": "INTEGER DEFAULT 0",
-        "producer_id": "INTEGER", "label_id": "INTEGER", "beatport_url": "TEXT",
-        "stream_url": "TEXT"
+        "producer_id": "INTEGER", "label_id": "INTEGER", "beatport_url": "TEXT"
     }
     for col, dtype in track_cols.items():
         if col not in existing_track_cols:
@@ -364,15 +362,6 @@ def assign_track_entities(track_id, producer_id=None, label_id=None, beatport_ur
     conn.commit()
     conn.close()
 
-
-def update_track_stream_url(track_id, stream_url):
-    if not track_id or not stream_url:
-        return
-    conn = get_conn()
-    conn.execute("UPDATE tracks SET stream_url = ? WHERE id = ?", (stream_url, track_id))
-    conn.commit()
-    conn.close()
-
 def update_set_soundcloud(set_id, soundcloud_url=None, dj_id=None):
     if not set_id:
         return
@@ -442,9 +431,7 @@ def get_all_sets():
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("""
-        SELECT s.*, 
-               COALESCE(s.thumbnail_url, MAX(d.image_url)) AS thumbnail_url,
-               COUNT(t.id) as track_count,
+        SELECT s.*, COUNT(t.id) as track_count,
                GROUP_CONCAT(DISTINCT d.name) as dj_names,
                l.name AS label_name,
                MAX(fs.folder_id) as folder_id
