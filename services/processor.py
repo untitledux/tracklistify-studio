@@ -17,7 +17,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def resolve_audio_stream_url(query):
-    # ... (unverändert, siehe vorher)
     cmd = ["yt-dlp", "-f", "bestaudio", "-g", "--no-playlist", f"ytsearch1:{query}"]
     try:
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=8, encoding='utf-8', errors='ignore')
@@ -30,7 +29,7 @@ def process_job(job, cancel_event: Event | None = None):
     temp_filename = f"{job.id}"
     file_path = None
     
-    print(f"--- JOB START: {job.id} ---") # Debug Print im Terminal
+    print(f"--- JOB START: {job.id} ---") 
 
     def _check_cancel(proc=None):
         if cancel_event and cancel_event.is_set():
@@ -70,7 +69,7 @@ def process_job(job, cancel_event: Event | None = None):
             file_path = job.payload
             if not os.path.exists(file_path): raise Exception("Datei weg.")
 
-        print(f"File Path: {file_path}") # Debug Print
+        print(f"File Path: {file_path}") 
 
         # 2. ANALYSE
         job.phase = "analyzing"
@@ -86,24 +85,18 @@ def process_job(job, cancel_event: Event | None = None):
             l = line.strip()
             if l:
                 analyzer_output.append(l)
-                # Nur wichtige Lines ins UI loggen, alles ins Terminal
                 print(f"[Tracklistify] {l}")
                 if "Identifying" in l or "Found" in l:
                     job.log_msg(l)
                     if job.progress < 90: job.progress += 2
 
         proc_ana.wait()
-        print(f"Analyse Exit Code: {proc_ana.returncode}") # Debug Print
-
+        
         if proc_ana.returncode != 0:
             job.phase = "error"
             job.status = "failed"
             job.error = f"Analyzer exited with code {proc_ana.returncode}"
             job.log_msg(job.error)
-            if analyzer_output:
-                job.log_msg("Analyzer output:")
-                for entry in analyzer_output:
-                    job.log_msg(entry)
             raise RuntimeError(job.error)
 
         # 3. IMPORT
@@ -112,24 +105,19 @@ def process_job(job, cancel_event: Event | None = None):
 
         _check_cancel()
 
-        # HIER WAR DER FEHLER: Wir fangen ihn ab
         result = importer.import_json_files()
-        print(f"Importer Result: {result} (Type: {type(result)})") # Debug Print
-
         new_ids = []
 
         if isinstance(result, list):
             new_ids = result
         elif isinstance(result, dict) and isinstance(result.get("new_set_ids"), list):
             new_ids = result.get("new_set_ids", [])
-        else:
-            job.log_msg("ACHTUNG: Importer gab unerwartetes Format zurück, Metadata Skip.")
 
         count = len(new_ids)
         if count:
             job.log_msg(f"Import abgeschlossen: {count} neues Set")
         else:
-            job.log_msg("Kein neues Set gefunden, eventuell bereits importiert.")
+            job.log_msg("Kein neues Set gefunden.")
 
         # 4. METADATA
         if job.metadata and new_ids:
@@ -140,11 +128,9 @@ def process_job(job, cancel_event: Event | None = None):
             upd = {"name": final_name, "artists": meta.get('artist'), "event": meta.get('event'), "is_b2b": meta.get('is_b2b'), "tags": meta.get('tags')}
             if final_name: database.rename_set(target_id, final_name)
             database.update_set_metadata(target_id, upd)
-            job.log_msg("Metadaten gespeichert.")
 
         # 5. ENRICHMENT
         if new_ids:
-            # SoundCloud enrichment for DJs (sets)
             for set_id in new_ids:
                 set_row = database.get_set(set_id)
                 dj_name = None
@@ -152,6 +138,7 @@ def process_job(job, cancel_event: Event | None = None):
                     dj_name = job.metadata.get("artist")
                 elif set_row and set_row.get("artists"):
                     dj_name = set_row.get("artists")
+                
                 if dj_name:
                     dj_info = enrichment.find_dj_on_soundcloud(dj_name)
                     if dj_info:
@@ -163,9 +150,6 @@ def process_job(job, cancel_event: Event | None = None):
                         )
                         database.link_set_dj(set_id, dj_id)
                         database.update_set_soundcloud(set_id, dj_info.get("soundcloud_url"), dj_id)
-                        job.log_msg(f"Found SoundCloud Profile: {dj_name}")
-
-            # Beatport enrichment disabled (previously relied on BeautifulSoup)
 
         return {"new_sets": count}
 
@@ -175,11 +159,13 @@ def process_job(job, cancel_event: Event | None = None):
     except Exception as e:
         job.log_msg(f"ERROR: {e}")
         import traceback
-        traceback.print_exc() # Fehler im Terminal ausgeben
+        traceback.print_exc()
         raise e
-    finally:
-        try:
-            if file_path and os.path.exists(file_path):
-                os.remove(file_path)
-        except:
-            pass
+    
+    # --- FIX IS HERE: WE REMOVED THE DELETION LOGIC ---
+    # finally:
+    #     try:
+    #         if file_path and os.path.exists(file_path):
+    #             os.remove(file_path)
+    #     except:
+    #         pass

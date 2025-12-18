@@ -1,0 +1,144 @@
+{
+  "mix_info": {
+    "title": "62fa5ae6-d603-401f-b2c2-a9af97016acf",
+    "date": "2025-12-18",
+    "source": "C:\\Users\\hi\\Documents\\tracklistify\\storage\\downloads\\62fa5ae6-d603-401f-b2c2-a9af97016acf.mp3",
+    "track_count": 18
+  },
+  "track_count": 18,
+  "analysis_info": {
+    "timestamp": "2025-12-18T23:06:33.447065",
+    "track_count": 18,
+    "average_confidence": 87.2254445598889,
+    "min_confidence": 70.953988916,
+    "max_confidence": 99.038302888
+  },
+  "tracks": [
+    {
+      "song_name": "Fret Bypass",
+      "artist": "Krow & BCCO",
+      "time_in_mix": "00:00:00",
+      "confidence": 94.720697556,
+      "duration": null
+    },
+    {
+      "song_name": "Elytra",
+      "artist": "Phil Berg",
+      "time_in_mix": "00:00:50",
+      "confidence": 85.77388519,
+      "duration": null
+    },
+    {
+      "song_name": "Glasshouse",
+      "artist": "Marcal",
+      "time_in_mix": "00:05:50",
+      "confidence": 74.17725467599999,
+      "duration": null
+    },
+    {
+      "song_name": "Leda",
+      "artist": "Franco Rossi",
+      "time_in_mix": "00:15:00",
+      "confidence": 79.8026084,
+      "duration": null
+    },
+    {
+      "song_name": "Jiggy Bow",
+      "artist": "Siu Mata & Amor Satyr",
+      "time_in_mix": "00:15:50",
+      "confidence": 91.3484212,
+      "duration": null
+    },
+    {
+      "song_name": "Lost In Mind (Extended Mix)",
+      "artist": "DJ Gerard",
+      "time_in_mix": "00:27:30",
+      "confidence": 90.3807048,
+      "duration": null
+    },
+    {
+      "song_name": "Agora Mesmo",
+      "artist": "DJ Dextro",
+      "time_in_mix": "00:28:20",
+      "confidence": 94.430875956,
+      "duration": null
+    },
+    {
+      "song_name": "Heroes of Mayday",
+      "artist": "Thomas J. Laren",
+      "time_in_mix": "00:29:10",
+      "confidence": 90.47987460000002,
+      "duration": null
+    },
+    {
+      "song_name": "When I Was Your Man (Radio Edit)",
+      "artist": "Craigy B & Fitzer",
+      "time_in_mix": "00:30:50",
+      "confidence": 80.13986340000001,
+      "duration": null
+    },
+    {
+      "song_name": "Parti",
+      "artist": "Konvulsion",
+      "time_in_mix": "00:33:20",
+      "confidence": 87.4452354,
+      "duration": null
+    },
+    {
+      "song_name": "Unified",
+      "artist": "Giuseppe Ottaviani & Nifra",
+      "time_in_mix": "00:40:00",
+      "confidence": 91.74559135999999,
+      "duration": null
+    },
+    {
+      "song_name": "Sans Soleil",
+      "artist": "Bidoben",
+      "time_in_mix": "00:44:10",
+      "confidence": 79.70631188,
+      "duration": null
+    },
+    {
+      "song_name": "He Eats (Outro)",
+      "artist": "Nathan Haskill",
+      "time_in_mix": "00:45:00",
+      "confidence": 99.038302888,
+      "duration": null
+    },
+    {
+      "song_name": "Progressiva",
+      "artist": "TSVI",
+      "time_in_mix": "00:48:20",
+      "confidence": 70.953988916,
+      "duration": null
+    },
+    {
+      "song_name": "Miss You",
+      "artist": "southstar",
+      "time_in_mix": "00:53:20",
+      "confidence": 91.30951150000001,
+      "duration": null
+    },
+    {
+      "song_name": "El Teke Teke",
+      "artist": "Los Teke Teke",
+      "time_in_mix": "00:58:20",
+      "confidence": 81.38005720000001,
+      "duration": null
+    },
+    {
+      "song_name": "No one else (feat. Andrey Bo)",
+      "artist": "Ramezz Music",
+      "time_in_mix": "01:00:50",
+      "confidence": 91.94126114,
+      "duration": null
+    },
+    {
+      "song_name": "All I Want",
+      "artist": "Pleasant Michelle & Brent Honey",
+      "time_in_mix": "01:02:30",
+      "confidence": 95.28355601599999,
+      "duration": null
+    }
+  ]
+}

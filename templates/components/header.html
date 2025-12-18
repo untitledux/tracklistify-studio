@@ -1,132 +1,54 @@
-<header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 z-20 shadow-sm shrink-0 relative">
+<header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 z-20 shadow-[0_2px_10px_rgba(0,0,0,0.02)] shrink-0 relative">
     
-    <div class="flex items-center gap-3 cursor-pointer group" @click="showDashboard()" title="Zum Dashboard">
-        <div class="hidden md:flex flex-col leading-tight">
-            <span class="text-[11px] uppercase tracking-[0.35em] text-gray-400">Tracklistify</span>
-            <h1 class="text-lg font-bold text-gray-800 tracking-tight group-hover:text-orange-600 transition-colors">Studio Dashboard</h1>
+    <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center text-white shadow-md shadow-orange-200">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
         </div>
-        <div class="md:hidden text-sm font-semibold text-gray-800">Dashboard</div>
+        <div class="flex flex-col leading-none">
+            <h1 class="text-sm font-bold text-gray-900 tracking-tight">TRACKLISTIFY</h1>
+            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest" x-text="currentView === 'dashboard' ? 'Studio' : (currentView === 'sets' ? 'Collection' : 'System')"></span>
+        </div>
     </div>
 
-    <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
-        <button @click="showQueueView()" 
-                class="hidden sm:flex items-center justify-center px-4 py-1.5 rounded-full border transition-all duration-300 cursor-pointer hover:shadow-md active:scale-95 group min-w-[180px] relative overflow-hidden"
-                :class="queueStatus.active ? 'bg-white border-gray-200' : 'bg-white border-gray-100'">
-            
-            <template x-if="queueStatus.active">
-                <div class="absolute inset-0 opacity-20 origin-left transition-transform duration-300 ease-linear"
-                     :class="getPhaseColor(queueStatus.active.phase)"
-                     :style="'transform: scaleX(' + (queueStatus.active.progress / 100) + ')'"></div>
-            </template>
-
-            <div class="relative z-10 flex items-center gap-2">
-                <template x-if="queueStatus.active">
-                    <div class="flex items-center gap-2">
-                        <span class="relative flex h-2.5 w-2.5">
-                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="getPhaseColor(queueStatus.active.phase)"></span>
-                          <span class="relative inline-flex rounded-full h-2.5 w-2.5" :class="getPhaseColor(queueStatus.active.phase)"></span>
-                        </span>
-                        <div class="flex flex-col items-start leading-none">
-                            <span class="text-xs font-bold text-gray-700" x-text="getPhaseLabel(queueStatus.active.phase)"></span>
-                            <span class="text-[9px] text-gray-400 font-mono" x-text="Math.round(queueStatus.active.progress) + '%'"></span>
-                        </div>
-                    </div>
-                </template>
-                <template x-if="!queueStatus.active">
-                    <span class="text-xs font-medium text-gray-400 group-hover:text-gray-600">System bereit</span>
-                </template>
-            </div>
+    <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" x-show="queueStatus.active">
+        <button @click="showQueueView()" class="flex items-center gap-2 px-3 py-1.5 bg-orange-50 border border-orange-100 rounded-full">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-orange-400"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+            </span>
+            <span class="text-xs font-bold text-orange-700" x-text="getPhaseLabel(queueStatus.active.phase)">Processing</span>
         </button>
     </div>
 
     <div class="flex items-center gap-2">
-        <button @click="showRescanView()"
-                class="relative p-2 text-gray-400 hover:text-orange-600 transition-all duration-200 rounded-full hover:bg-orange-50 active:scale-95"
-                title="Rescan Queue">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 01-2-2M5 11V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            <template x-if="rescanCandidates.length > 0">
-                <span class="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white" 
-                      x-text="rescanCandidates.length"></span>
-            </template>
+        <button @click="showRescanView()" class="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-full transition-colors relative" title="Queue">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <span x-show="rescanCandidates.length > 0" class="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full ring-2 ring-white"></span>
         </button>
 
-        <button @click="ui.showLikes = !ui.showLikes"
-                class="relative p-2 transition-all rounded-xl active:scale-95"
-                :class="ui.showLikes ? 'text-pink-600 bg-pink-50' : 'text-gray-400 hover:text-pink-500 hover:bg-pink-50'"
-                title="Merkliste">
-            <svg class="w-6 h-6" :fill="ui.showLikes ? 'currentColor' : 'none'" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-            <template x-if="likedTracks.length > 0">
-                <span class="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-pink-500 ring-2 ring-white"></span>
-            </template>
-        </button>
-
-    <div class="relative" @click.outside="auth.dropdownOpen = false">
-        <button @click="auth.dropdownOpen = !auth.dropdownOpen"
-                class="flex items-center gap-2 px-3 py-2 rounded-full border border-gray-200 bg-white shadow-sm hover:shadow group transition"
-                :class="auth.dropdownOpen ? 'ring-2 ring-orange-200' : ''">
-            <template x-if="auth.user">
-                <div class="flex items-center gap-2">
-                    <div class="w-9 h-9 rounded-full bg-orange-100 text-orange-700 font-bold flex items-center justify-center uppercase group-hover:bg-orange-200" x-text="(auth.user.name || auth.user.dj_name || auth.user.email)[0]"></div>
-                    <div class="hidden sm:flex flex-col leading-none text-left">
-                        <span class="text-xs font-semibold text-gray-800" x-text="auth.user.name || auth.user.dj_name || auth.user.email"></span>
-                        <span class="text-[11px] text-gray-400">Profil</span>
-                    </div>
-                </div>
-            </template>
-            <template x-if="!auth.user">
-                <div class="flex items-center gap-2">
-                    <div class="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center group-hover:text-orange-600 group-hover:bg-orange-50">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A10 10 0 1118.88 17.8 7 7 0 005 17.8z" />
-                        </svg>
-                    </div>
-                    <div class="hidden sm:flex flex-col leading-none text-left">
-                        <span class="text-xs font-semibold text-gray-800">Gast</span>
-                        <span class="text-[11px] text-gray-400">Anmelden</span>
-                    </div>
-                </div>
-            </template>
-            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        <button @click="ui.showLikes = !ui.showLikes" 
+                class="p-2 transition-all rounded-full border border-transparent"
+                :class="ui.showLikes ? 'bg-pink-50 text-pink-600 border-pink-100' : 'text-gray-400 hover:text-pink-500 hover:bg-pink-50'">
+            <svg class="w-5 h-5" 
+                 :fill="ui.showLikes ? 'currentColor' : 'none'" 
+                 viewBox="0 0 24 24" 
+                 stroke="currentColor" 
+                 stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
         </button>
 
-        <div x-show="auth.dropdownOpen" x-transition
-             class="absolute right-0 mt-3 w-56 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
-            <template x-if="auth.user">
-                <div>
-                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
-                        <p class="text-xs text-gray-500">Angemeldet als</p>
-                        <p class="text-sm font-semibold text-gray-800" x-text="auth.user.name || auth.user.dj_name || auth.user.email"></p>
-                    </div>
-                    <nav class="p-2 flex flex-col gap-1">
-                        <a href="/profile" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-orange-50 text-sm text-gray-700">
-                            <svg class="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A10 10 0 1118.88 17.8 7 7 0 005 17.8z" />
-                            </svg>
-                            Profil anzeigen
-                        </a>
-                        <button class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50 text-sm text-red-600 text-left"
-                                @click="logout()">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 11-4 0v-1m4-10V5a2 2 0 10-4 0v1" />
-                            </svg>
-                            Logout
-                        </button>
-                    </nav>
-                </div>
-            </template>
-            <template x-if="!auth.user">
-                <div class="p-3 flex flex-col gap-2">
-                    <a href="/login" class="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600">Login</a>
-                    <a href="/register" class="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-semibold text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100">Registrieren</a>
-                </div>
-            </template>
+        <div class="h-6 w-px bg-gray-200 mx-2"></div>
+
+        <div class="relative" @click.outside="auth.dropdownOpen = false">
+            <button @click="auth.dropdownOpen = !auth.dropdownOpen" class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-600" x-text="(auth.user.name || 'U')[0]"></div>
+            </button>
+            
+            <div x-show="auth.dropdownOpen" x-transition class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
+                <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Profil</a>
+                <button @click="logout()" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Logout</button>
+            </div>
         </div>
-    </div>
     </div>
 </header>

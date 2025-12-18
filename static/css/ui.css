@@ -1,94 +1,236 @@
+/* =========================================
+   1. CORE VARIABLES (Dark & Light Shared)
+   ========================================= */
 :root {
-  --ui-page-bg: #f8fafc;
-  --ui-text: #111827;
-  --ui-text-strong: #0f172a;
-  --ui-muted: #6b7280;
-  --ui-card-bg: #ffffff;
-  --ui-card-header-bg: #f9fafb;
-  --ui-card-border: #e5e7eb;
-  --ui-card-radius: 14px;
-  --ui-card-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-  --ui-shell-width: 1200px;
-  --ui-shell-padding: 32px;
-  --ui-block-gap: 24px;
-  --ui-card-padding: 18px;
-  --ui-stack-gap: 12px;
-  --ui-font: 'Inter', sans-serif;
+    /* --- SWISS DARK THEME (Main Studio) --- */
+    --bg: #05070c;
+    --bg-soft: #0e0e0f;
+    --panel: rgba(20, 20, 25, 0.6);
+    --panel-strong: rgba(30, 30, 35, 0.8);
+    --border: rgba(255, 255, 255, 0.08);
+    --ink: #f3f4f6;
+    --ink-muted: #9ca3af;
+    --accent: #ff5500;
+    
+    /* Dimensions */
+    --sidebar-width: 280px;
+    --header-height: 64px;
+    --player-height: 80px;
+    --radius: 12px;
+
+    /* --- UI LIGHT THEME (Profile & Settings) --- */
+    --ui-page-bg: #f8fafc;
+    --ui-text: #111827;
+    --ui-text-strong: #0f172a;
+    --ui-muted: #6b7280;
+    --ui-card-bg: #ffffff;
+    --ui-card-header-bg: #f9fafb;
+    --ui-card-border: #e5e7eb;
+    --ui-card-radius: 14px;
+    --ui-card-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    --ui-shell-width: 1200px;
+    --ui-shell-padding: 32px;
+    --ui-font: 'Inter', system-ui, sans-serif;
 }
 
+/* =========================================
+   2. GLOBAL RESET
+   ========================================= */
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: var(--ui-font);
+    -webkit-font-smoothing: antialiased;
+}
+
+[x-cloak] { display: none !important; }
+
+/* Custom Scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(150, 150, 150, 0.3); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(150, 150, 150, 0.5); }
+
+
+/* =========================================
+   3. DARK MODE (Main App Shell)
+   ========================================= */
+/* Only applies to the Main Studio Interface */
+body.dark-mode {
+    background-color: var(--bg);
+    color: var(--ink);
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
+.app-shell {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    grid-template-rows: 1fr;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background-color: var(--bg);
+    color: var(--ink);
+}
+
+/* Sidebar */
+.swiss-sidebar {
+    background: var(--bg-soft);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 30;
+    height: 100%;
+}
+
+/* Glass Panels */
+.glass-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(12px);
+}
+
+/* Player Bar */
+.player-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--player-height);
+    background: rgba(10, 10, 12, 0.95);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    padding: 0 2rem;
+    z-index: 50;
+    color: var(--ink);
+}
+
+/* Dark Mode Utilities */
+.btn-ghost {
+    background: transparent;
+    color: var(--ink-muted);
+    border: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+}
+.btn-ghost:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+}
+
+
+/* =========================================
+   4. LIGHT MODE (UI Classes for Profile/Auth)
+   ========================================= */
+/* Use these classes in profile.html and auth.html */
+
 .ui-page {
-  background: var(--ui-page-bg);
-  color: var(--ui-text);
-  font-family: var(--ui-font);
-  letter-spacing: 0.01em;
+    background: var(--ui-page-bg);
+    color: var(--ui-text);
+    min-height: 100vh;
 }
 
 .ui-shell {
-  max-width: var(--ui-shell-width);
-  margin: 0 auto;
-  padding: var(--ui-shell-padding) 20px;
-  display: grid;
-  gap: var(--ui-block-gap);
+    max-width: var(--ui-shell-width);
+    margin: 0 auto;
+    padding: var(--ui-shell-padding) 20px;
+    display: grid;
+    gap: 24px;
 }
 
 .ui-card {
-  background: var(--ui-card-bg);
-  border: 1px solid var(--ui-card-border);
-  border-radius: var(--ui-card-radius);
-  box-shadow: var(--ui-card-shadow);
+    background: var(--ui-card-bg);
+    border: 1px solid var(--ui-card-border);
+    border-radius: var(--ui-card-radius);
+    box-shadow: var(--ui-card-shadow);
 }
 
 .ui-card-header {
-  padding: var(--ui-card-padding);
-  border-bottom: 1px solid var(--ui-card-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: var(--ui-card-header-bg);
+    padding: var(--ui-card-padding);
+    border-bottom: 1px solid var(--ui-card-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--ui-card-header-bg);
 }
 
 .ui-card-section {
-  padding: var(--ui-card-padding);
-  display: grid;
-  gap: var(--ui-stack-gap);
-}
-
-.ui-stack {
-  display: grid;
-  gap: var(--ui-stack-gap);
+    padding: var(--ui-card-padding);
+    display: grid;
+    gap: var(--ui-stack-gap);
 }
 
 .ui-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--ui-text-strong);
-}
-
-.ui-subtitle {
-  font-size: 0.95rem;
-  color: var(--ui-muted);
-}
-
-.ui-muted {
-  color: var(--ui-muted);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--ui-text-strong);
 }
 
 .ui-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #fff7ed;
-  color: #c2410c;
-  font-weight: 700;
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  border: 1px solid #fed7aa;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #fff7ed;
+    color: #c2410c;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    border: 1px solid #fed7aa;
 }
 
 .ui-list-divider > * + * {
-  border-top: 1px solid var(--ui-card-border);
+    border-top: 1px solid var(--ui-card-border);
+}
+
+
+/* =========================================
+   5. SHARED UTILITIES & ANIMATIONS
+   ========================================= */
+.animate-row { animation: fadeInUp 0.3s ease-out forwards; opacity: 0; }
+.animate-row:nth-child(1) { animation-delay: 0.05s; }
+.animate-row:nth-child(2) { animation-delay: 0.1s; }
+.animate-row:nth-child(3) { animation-delay: 0.15s; }
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Modal Backdrop (Shared) */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 80;
+    backdrop-filter: blur(4px);
+}
+
+/* Modal Box (Adaptive) */
+.modal {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    width: 100%;
+    max-width: 500px;
+    overflow: hidden;
+}
+/* Dark Mode Modal Override */
+body.dark-mode .modal {
+    background: #18181b;
+    color: var(--ink);
+    border: 1px solid var(--border);
 }

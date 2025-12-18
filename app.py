@@ -1,4 +1,5 @@
 import os
+import re
 from functools import lru_cache
 from typing import Any, Dict, Optional
 
@@ -11,7 +12,9 @@ from flask import (
     render_template,
     request,
     send_from_directory,
+    send_file,
     session,
+    Response
 )
 from pydantic import BaseModel, EmailStr, ValidationError
 from werkzeug.exceptions import BadRequest, HTTPException
@@ -272,6 +275,14 @@ def login():
     role = "admin" if user.is_admin else "user"
     return jsonify({"ok": True, "user": user.model_dump(), "role": role})
 
+@auth_api.route("/me", methods=["GET"])
+def auth_me():
+    """Returns current user for frontend init."""
+    user = get_current_user()
+    if not user:
+        return jsonify({"ok": False}), 401
+    return jsonify(user.model_dump())
+
 @auth_api.route("/profile", methods=["GET", "POST"])
 def profile():
     user, error_response = require_session_user()
@@ -290,7 +301,7 @@ def profile():
         
     return jsonify({"ok": True, "user": user.model_dump()})
 
-@auth_api.route("/logout", methods=["POST"])
+@auth_api.route("/logout", methods=["POST", "GET"])
 def logout():
     session.clear()
     return jsonify({"ok": True})
@@ -316,8 +327,16 @@ def rename_set(sid):
     database.rename_set(sid, payload.name)
     return jsonify({"ok": True})
 
+@app.route("/api/sets/<int:sid>", methods=["PUT"])
+def update_set_metadata_put(sid):
+    """Update set metadata (PUT/JSON)."""
+    data = request.get_json()
+    database.update_set_metadata(sid, data)
+    return jsonify({"ok": True})
+
 @app.route("/api/sets/<int:sid>/metadata", methods=["POST"])
 def update_set_metadata(sid):
+    """Update set metadata (POST/Schema)."""
     payload = parse_body(SetMetadataRequest)
     database.update_set_metadata(sid, payload.model_dump(exclude_none=True))
     return jsonify({"ok": True})
@@ -335,8 +354,13 @@ def delete_track(tid):
 
 @app.route("/api/tracks/<int:tid>/like", methods=["POST"])
 def like_track(tid):
-    data = parse_body(ToggleFavoriteRequest)
-    liked = 1 if data.liked else 0
+    # Handle optional JSON body or just toggle
+    try:
+        data = parse_body(ToggleFavoriteRequest)
+        liked = 1 if data.liked else 0
+    except BadRequest:
+        liked = 1
+        
     database.toggle_track_like(tid, liked)
     return jsonify({"ok": True})
 
@@ -346,8 +370,13 @@ def get_liked_tracks_endpoint():
 
 @app.route("/api/tracks/<int:tid>/purchase", methods=["POST"])
 def purchase_track(tid):
-    data = parse_body(PurchaseToggleRequest)
-    purchased = 1 if data.purchased else 0
+    # Handle optional JSON
+    try:
+        data = parse_body(PurchaseToggleRequest)
+        purchased = 1 if data.purchased else 0
+    except BadRequest:
+        purchased = 1
+        
     database.toggle_track_purchase(tid, purchased)
     return jsonify({"ok": True})
 
@@ -395,10 +424,19 @@ def flag_track(tid):
 # --- API: Metadata Resolver ---
 
 @app.route("/api/resolve_metadata", methods=["POST"])
-def get_metadata():
-    """Fetches metadata via yt-dlp quickly."""
-    data = parse_body(ResolveMetadataRequest)
-    url = data.url
+def get_metadata_legacy():
+    """Legacy alias for metadata resolution."""
+    return get_metadata_import()
+
+@app.route("/api/import/metadata", methods=["POST"])
+def get_metadata_import():
+    """Fetches metadata via yt-dlp (Frontend wrapper)."""
+    # Handle both {url: ...} and {value: ...}
+    data = request.get_json(silent=True) or {}
+    url = data.get("url") or data.get("value")
+    
+    if not url:
+        return jsonify({"ok": False, "error": "URL required"}), 400
 
     ydl_opts = {
         'quiet': True,
@@ -433,7 +471,7 @@ def get_metadata():
 
         return jsonify({
             "ok": True,
-            "name": name_guess.strip(),
+            "title": name_guess.strip(),
             "artist": artist_guess.strip(),
             "event": event_guess.strip()
         })
@@ -443,6 +481,7 @@ def get_metadata():
 
 @app.route("/api/queue/add", methods=["POST"])
 def add_job():
+    """Legacy Endpoint for Form Data."""
     metadata_raw = request.form.get("metadata")
     metadata: Dict[str, Any] = {}
 
@@ -478,6 +517,21 @@ def add_job():
 
     return jsonify({"ok": True})
 
+@app.route("/api/import/url", methods=["POST"])
+def import_url_job():
+    """JSON Endpoint for URL Import (Frontend)."""
+    data = request.get_json()
+    url = data.get("url")
+    if not url: return jsonify({"ok": False}), 400
+    
+    metadata = {
+        "artist": data.get("artist"),
+        "name": data.get("title"),
+        "is_b2b": data.get("is_b2b")
+    }
+    job_manager.add_job("url", url, metadata)
+    return jsonify({"ok": True})
+
 @app.route("/api/queue/status")
 def queue_status():
     return jsonify(job_manager.get_status())
@@ -487,6 +541,69 @@ def queue_stop():
     stopped = job_manager.stop_active()
     return jsonify({"ok": True, "stopped": stopped})
 
+
+# --- API: Frontend Integration (New) ---
+
+@app.route("/api/dashboard/stats")
+def dashboard_stats_api():
+    return jsonify(database.get_dashboard_stats())
+
+# --- AUDIO STREAMING WITH SEEKING ---
+@app.route("/api/stream/<int:track_id>")
+def stream_track_audio(track_id):
+    """Stream audio with support for Range headers (Seeking)."""
+    conn = database.get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT s.audio_file 
+        FROM tracks t 
+        JOIN sets s ON t.set_id = s.id 
+        WHERE t.id = ?
+    """, (track_id,))
+    row = cur.fetchone()
+    conn.close()
+
+    if not row or not row['audio_file']:
+        return jsonify({"error": "Audio file record not found"}), 404
+
+    path = row['audio_file']
+    if not os.path.exists(path):
+        return jsonify({"error": "File missing from disk. Please re-import set."}), 404
+
+    # Handle Range Headers for seeking
+    range_header = request.headers.get('Range', None)
+    if not range_header:
+        return send_file(path)
+
+    try:
+        size = os.path.getsize(path)
+        byte1, byte2 = 0, None
+        
+        m = re.search(r'(\d+)-(\d*)', range_header)
+        g = m.groups()
+        
+        if g[0]: byte1 = int(g[0])
+        if g[1]: byte2 = int(g[1])
+
+        length = size - byte1
+        if byte2 is not None:
+            length = byte2 + 1 - byte1
+
+        with open(path, 'rb') as f:
+            f.seek(byte1)
+            data = f.read(length)
+
+        rv = Response(
+            data, 
+            206, 
+            mimetype='audio/mpeg', 
+            direct_passthrough=True
+        )
+        rv.headers.add('Content-Range', f'bytes {byte1}-{byte1 + length - 1}/{size}')
+        rv.headers.add('Accept-Ranges', 'bytes')
+        return rv
+    except Exception as e:
+        return send_file(path)
 
 # --- API: Rescan & Audio ---
 
@@ -563,10 +680,11 @@ def handle_exception(error):
     else:
         code = 500
         message = str(error) or "Internal Server Error"
+        print(f"Server Error: {message}") # Debug print
 
     return jsonify({"error": True, "message": message, "code": code}), code
 
 
 if __name__ == "__main__":
-    print("Starte Tracklistify Helper auf http://127.0.0.1:5000")
+    print("Starting Tracklistify Helper on http://127.0.0.1:5000")
     app.run(host="0.0.0.0", port=5000, debug=True)
