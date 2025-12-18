@@ -77,7 +77,8 @@ document.addEventListener('alpine:init', () => {
             playingId: null, 
             loadingId: null,
             hoverTrackId: null,
-            contextMenu: { show: false, x: 0, y: 0, target: null, type: null }
+            contextMenu: { show: false, x: 0, y: 0, target: null, type: null },
+            uploadTab: 'url'
         },
         
         toasts: [],
@@ -215,6 +216,7 @@ document.addEventListener('alpine:init', () => {
                 if (!f.files.length) return;
                 fd.append('file', f.files[0]);
                 f.value = '';
+                this.inputs.file = null;
             }
 
             // Direkt Modal schließen und zur Queue springen
