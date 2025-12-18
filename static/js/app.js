@@ -901,6 +901,27 @@ document.addEventListener('alpine:init', () => {
             this.persistFoldersLocally();
         },
 
+        onDropToTrash(event) {
+            event.preventDefault();
+            const set = this.draggingSet;
+            this.draggingSet = null;
+            this.folderHoverId = null;
+            if (!set) return;
+
+            let changed = false;
+            (this.folders || []).forEach(folder => {
+                const before = (folder.sets || []).length;
+                folder.sets = (folder.sets || []).filter(id => id !== set.id);
+                if (folder.sets.length !== before) changed = true;
+            });
+
+            if (changed) {
+                set.folder_id = null;
+                this.persistFoldersLocally();
+                this.showToast('Removed from folder', set.name || 'Set', 'info');
+            }
+        },
+
         isProducerFavorite(producerId) {
             if (!producerId) return false;
             return this.favoriteProducers.some(p => p.id === producerId);
