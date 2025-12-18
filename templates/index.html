@@ -222,17 +222,6 @@
             gap: 12px;
         }
 
-        .logo-ring {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, rgba(255, 107, 0, 0.18), rgba(76, 151, 255, 0.18));
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid var(--border);
-        }
-
         .nav-actions {
             display: flex;
             align-items: center;
@@ -586,6 +575,49 @@
             letter-spacing: 0.1em;
         }
 
+        .overlay-container {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            z-index: 60;
+        }
+
+        .overlay-panel {
+            width: 320px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: rgba(12, 14, 20, 0.94);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .overlay-header {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .overlay-list {
+            max-height: 320px;
+            overflow-y: auto;
+            display: grid;
+            gap: 8px;
+            padding: 10px 12px 12px;
+        }
+
+        .overlay-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
         .context-menu {
             position: fixed;
             z-index: 70;
@@ -813,9 +845,6 @@
                 <span class="eyebrow">Tracklistify</span>
                 <span class="title">Studio Library</span>
             </div>
-            <div style="display:flex; gap:10px;">
-                <button class="cta" style="padding:10px 14px;" @click="ui.showAddModal = true">Add Set</button>
-            </div>
         </div>
         <div class="library-search">
             <input class="input" x-model="search" type="text" placeholder="Filter sets or artists">
@@ -892,8 +921,9 @@
     <section class="main glass-panel">
         <div class="top-nav">
             <div class="logo-mark">
-                <div class="logo-ring">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h6l2 3h8v9H4z"/><circle cx="9" cy="13" r="2"/><circle cx="15" cy="13" r="2"/></svg>
+                <div class="brand">
+                    <span class="eyebrow">Tracklistify</span>
+                    <span class="title">Studio</span>
                 </div>
             </div>
             <div class="nav-progress">
@@ -907,40 +937,63 @@
                     </div>
                 </button>
             </div>
-            <div class="nav-actions">
+            <div class="nav-actions" style="position:relative;">
                 <button class="cta" @click="ui.showAddModal = true">Add Set</button>
-                <div class="user-chip" style="padding:0; border:none; background:none;">
-                    <div class="relative" @click.outside="auth.dropdownOpen = false">
+                <div class="user-chip" style="padding:0; border:none; background:none; position:relative;">
+                    <div style="position: relative;" @click.outside="auth.dropdownOpen = false">
                         <button class="avatar" style="width:42px; height:42px;" @click="auth.dropdownOpen = !auth.dropdownOpen" x-text="(auth.user?.name || auth.user?.dj_name || auth.user?.email || 'D')[0]"></button>
-                        <div x-show="auth.dropdownOpen" x-transition
-                             class="absolute right-0 mt-3 w-56 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
-                            <template x-if="auth.user">
-                                <div>
-                                    <div class="px-4 py-3" style="background:rgba(255,255,255,0.06); border-bottom:1px solid var(--border);">
-                                        <p class="text-xs text-gray-400">Signed in</p>
-                                        <p class="text-sm font-semibold text-gray-50" x-text="auth.user.name || auth.user.dj_name || auth.user.email"></p>
+                        <div x-show="auth.dropdownOpen" x-transition class="overlay-container">
+                            <div class="overlay-panel" style="width: 260px;">
+                                <template x-if="auth.user">
+                                    <div>
+                                        <div class="overlay-header" style="border-bottom-color: var(--border);">Signed in</div>
+                                        <div style="padding:10px 12px; display:grid; gap:8px;">
+                                            <div class="song" style="font-weight:700; letter-spacing:0.08em;" x-text="auth.user.name || auth.user.dj_name || auth.user.email"></div>
+                                            <nav style="display:grid; gap:6px;">
+                                                <a href="/profile" class="ghost-button" style="text-align:left; padding:10px 12px;">Profile</a>
+                                                <button class="ghost-button" style="text-align:left; padding:10px 12px;" @click="logout()">Logout</button>
+                                            </nav>
+                                        </div>
                                     </div>
-                                    <nav class="p-2" style="display:grid; gap:6px;">
-                                        <a href="/profile" class="ghost-button" style="text-align:left; padding:10px 12px;">Profile</a>
-                                        <button class="ghost-button" style="text-align:left; padding:10px 12px;" @click="logout()">Logout</button>
-                                    </nav>
-                                </div>
-                            </template>
-                            <template x-if="!auth.user">
-                                <div class="p-3" style="display:grid; gap:8px;">
-                                    <a href="/login" class="cta" style="width:100%; text-align:center;">Login</a>
-                                    <a href="/register" class="ghost-button" style="text-align:center;">Register</a>
-                                </div>
-                            </template>
+                                </template>
+                                <template x-if="!auth.user">
+                                    <div>
+                                        <div class="overlay-header" style="border-bottom-color: var(--border);">Welcome</div>
+                                        <div style="padding:12px; display:grid; gap:8px;">
+                                            <a href="/login" class="cta" style="width:100%; text-align:center;">Login</a>
+                                            <a href="/register" class="ghost-button" style="text-align:center;">Register</a>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <button class="icon-button"
-                        @click="ui.showLikes = !ui.showLikes"
-                        :style="ui.showLikes ? 'border-color: var(--accent); color: var(--accent); background: rgba(255,107,0,0.12);' : ''"
-                        title="Likes">
-                    <svg width="18" height="18" viewBox="0 0 24 24" :fill="ui.showLikes ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-                </button>
+                <div style="position: relative;">
+                    <button class="icon-button"
+                            @click="ui.showLikes = !ui.showLikes; if (ui.showLikes) { fetchLikes(); fetchProducerLikes(); }"
+                            :style="ui.showLikes ? 'border-color: var(--accent); color: var(--accent); background: rgba(255,107,0,0.12);' : ''"
+                            title="Likes">
+                        <svg width="18" height="18" viewBox="0 0 24 24" :fill="ui.showLikes ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                    </button>
+                    <div x-show="ui.showLikes" x-transition @click.outside="ui.showLikes = false" class="overlay-container">
+                        <div class="overlay-panel">
+                            <div class="overlay-header">Liked Tracks</div>
+                            <div class="overlay-list">
+                                <template x-for="track in likedTracks" :key="track.id">
+                                    <div class="overlay-row">
+                                        <div style="display:grid; gap:4px;">
+                                            <div class="song" x-text="track.title || 'Unknown Track'"></div>
+                                            <div class="artist" x-text="track.artist || 'Unknown Artist'"></div>
+                                        </div>
+                                        <span class="pill" style="padding:6px 10px; justify-self:end;" x-text="track.flag === 3 ? '???' : track.position || ''"></span>
+                                    </div>
+                                </template>
+                                <div class="hint" x-show="likedTracks.length === 0">No likes yet.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -951,7 +1004,6 @@
             </div>
             <div style="display:flex; gap:10px;">
                 <button class="pill" @click="copyTracklist" x-show="activeSet">Copy Active List</button>
-                <button class="ghost-button" @click="ui.showAddModal = true">Import new set</button>
             </div>
         </div>
 
