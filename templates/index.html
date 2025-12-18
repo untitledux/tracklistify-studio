@@ -213,6 +213,7 @@
             justify-content: space-between;
             padding: 16px 20px;
             border-bottom: 1px solid var(--border);
+            position: relative;
         }
 
         .logo-mark {
@@ -230,23 +231,6 @@
             align-items: center;
             justify-content: center;
             border: 1px solid var(--border);
-        }
-
-        .logo-text {
-            display: grid;
-            line-height: 1.1;
-        }
-
-        .logo-text span:first-child {
-            font-size: 12px;
-            letter-spacing: 0.14em;
-            color: var(--muted);
-        }
-
-        .logo-text span:last-child {
-            font-size: 15px;
-            font-weight: 800;
-            letter-spacing: 0.2em;
         }
 
         .nav-actions {
@@ -550,6 +534,54 @@
         .ghost-button:hover {
             border-color: var(--accent);
             color: var(--accent);
+        }
+
+        .nav-progress {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            min-width: 260px;
+        }
+
+        .progress-button {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.06);
+            padding: 10px 14px;
+            display: grid;
+            gap: 6px;
+            cursor: pointer;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .progress-button:hover {
+            border-color: var(--accent);
+            box-shadow: 0 10px 30px rgba(255, 107, 0, 0.24);
+        }
+
+        .progress-track {
+            position: relative;
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(255, 107, 0, 0.9), rgba(76, 151, 255, 0.9));
+            transform-origin: left;
+        }
+
+        .progress-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            letter-spacing: 0.1em;
         }
 
         .context-menu {
@@ -862,26 +894,52 @@
                 <div class="logo-ring">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h6l2 3h8v9H4z"/><circle cx="9" cy="13" r="2"/><circle cx="15" cy="13" r="2"/></svg>
                 </div>
-                <div class="logo-text">
-                    <span>Tracklistify</span>
-                    <span>Studio</span>
-                </div>
+            </div>
+            <div class="nav-progress">
+                <button class="progress-button" @click="showQueueView()">
+                    <div class="progress-track">
+                        <div class="progress-fill" :style="'transform: scaleX(' + (queueProgressValue() / 100) + ')'"></div>
+                    </div>
+                    <div class="progress-meta">
+                        <span x-text="queueStatus.active ? getPhaseLabel(queueStatus.active.phase) : 'Queue idle'"></span>
+                        <span x-text="Math.round(queueProgressValue()) + '%'"></span>
+                    </div>
+                </button>
             </div>
             <div class="nav-actions">
-                <button class="pill pill-link" @click="openAdmin">Admin</button>
-                <template x-if="auth.user">
-                    <div class="user-chip">
-                        <div class="avatar" x-text="(auth.user.name || auth.user.dj_name || auth.user.email || 'DJ')[0]"></div>
-                        <div class="names">
-                            <div style="font-weight:700; letter-spacing:0.06em;" x-text="auth.user.name || auth.user.dj_name || auth.user.email"></div>
-                            <div style="font-size:11px; color:var(--muted); letter-spacing:0.1em;">Signed in</div>
+                <button class="cta" @click="ui.showAddModal = true">Add Set</button>
+                <div class="user-chip" style="padding:0; border:none; background:none;">
+                    <div class="relative" @click.outside="auth.dropdownOpen = false">
+                        <button class="avatar" style="width:42px; height:42px;" @click="auth.dropdownOpen = !auth.dropdownOpen" x-text="(auth.user?.name || auth.user?.dj_name || auth.user?.email || 'D')[0]"></button>
+                        <div x-show="auth.dropdownOpen" x-transition
+                             class="absolute right-0 mt-3 w-56 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
+                            <template x-if="auth.user">
+                                <div>
+                                    <div class="px-4 py-3" style="background:rgba(255,255,255,0.06); border-bottom:1px solid var(--border);">
+                                        <p class="text-xs text-gray-400">Signed in</p>
+                                        <p class="text-sm font-semibold text-gray-50" x-text="auth.user.name || auth.user.dj_name || auth.user.email"></p>
+                                    </div>
+                                    <nav class="p-2" style="display:grid; gap:6px;">
+                                        <a href="/profile" class="ghost-button" style="text-align:left; padding:10px 12px;">Profile</a>
+                                        <button class="ghost-button" style="text-align:left; padding:10px 12px;" @click="logout()">Logout</button>
+                                    </nav>
+                                </div>
+                            </template>
+                            <template x-if="!auth.user">
+                                <div class="p-3" style="display:grid; gap:8px;">
+                                    <a href="/login" class="cta" style="width:100%; text-align:center;">Login</a>
+                                    <a href="/register" class="ghost-button" style="text-align:center;">Register</a>
+                                </div>
+                            </template>
                         </div>
                     </div>
-                </template>
-                <template x-if="!auth.user">
-                    <a href="/login" class="pill pill-link">Guest</a>
-                </template>
-                <button class="cta" @click="ui.showAddModal = true">Add Set</button>
+                </div>
+                <button class="icon-button"
+                        @click="ui.showLikes = !ui.showLikes"
+                        :style="ui.showLikes ? 'border-color: var(--accent); color: var(--accent); background: rgba(255,107,0,0.12);' : ''"
+                        title="Likes">
+                    <svg width="18" height="18" viewBox="0 0 24 24" :fill="ui.showLikes ? 'currentColor' : 'none'" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                </button>
             </div>
         </div>
 

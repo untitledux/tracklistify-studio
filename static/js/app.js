@@ -1268,6 +1268,13 @@ document.addEventListener('alpine:init', () => {
             return 'Verarbeite...';
         },
 
+        queueProgressValue() {
+            if (this.queueStatus?.active && typeof this.queueStatus.active.progress === 'number') {
+                return Math.max(0, Math.min(100, Math.round(this.queueStatus.active.progress)));
+            }
+            return 0;
+        },
+
         statHighlights() {
             return [
                 { key: 'sets', label: 'SETS', value: this.dashboardStats.total_sets || 0 },
