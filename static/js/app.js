@@ -1129,7 +1129,7 @@ document.addEventListener('alpine:init', () => {
             await this.confirmAndDeleteSet(set, `Set "${set.name}" wirklich löschen?`);
         },
 
-        renameFolderContext() {
+        async renameFolderContext() {
             const folder = this.ui.contextMenu.target;
             this.closeContextMenu();
             if (!folder) return;
