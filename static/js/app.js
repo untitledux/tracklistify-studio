@@ -1,5 +1,6 @@
-document.addEventListener('alpine:init', () => {
-    Alpine.data('tracklistify', () => ({
+const registerTracklistify = (AlpineInstance) => {
+    if (!AlpineInstance) return;
+    AlpineInstance.data('tracklistify', () => ({
         // =====================================================================
         // DATA STORAGE
         // =====================================================================
@@ -1495,4 +1496,10 @@ document.addEventListener('alpine:init', () => {
             this.showToast("Kopiert!", "", "success"); 
         }
     }));
-});
+};
+
+if (window.Alpine) {
+    registerTracklistify(window.Alpine);
+} else {
+    document.addEventListener('alpine:init', () => registerTracklistify(window.Alpine));
+}
