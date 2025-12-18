@@ -35,13 +35,15 @@
             <p id="loginError" class="text-sm text-red-400"></p>
         </form>
 
-        <p class="mt-4 text-sm text-slate-400 text-center">Kein Zugang? Nutze den Admin-Invite oder melde dich als <strong>admin</strong>.</p>
+            <p class="mt-4 text-sm text-slate-400 text-center">Kein Zugang? Nutze den Admin-Invite oder melde dich mit <strong>admin@tracklistify.com / 123456</strong> an.</p>
     </div>
 </div>
 
 <script>
     const form = document.getElementById('loginForm');
     const errorEl = document.getElementById('loginError');
+    const params = new URLSearchParams(window.location.search);
+    const redirectTarget = params.get('next');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -60,7 +62,7 @@
         const data = await res.json();
 
         if (res.ok && data.ok) {
-            window.location.href = '/';
+            window.location.href = redirectTarget || '/';
         } else {
             errorEl.textContent = data.error || 'Login fehlgeschlagen';
         }

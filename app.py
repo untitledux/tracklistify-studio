@@ -38,6 +38,7 @@ from backend.models import (
     TrackFlagRequest
 )
 from services.user_store import (
+    DEFAULT_ADMIN_EMAIL,
     UserStore,
     LoginPayload,
     RegisterPayload,
@@ -227,15 +228,33 @@ def login():
     except ValidationError:
         admin_email = ADMIN_LOGIN_EMAIL
 
-    if raw_email.lower() == "admin" or raw_email.lower() == os.getenv("ADMIN_EMAIL", "").lower():
-        raw_email = admin_email
+    admin_aliases = [admin_email, DEFAULT_ADMIN_EMAIL]
+    admin_aliases = [email for email in admin_aliases if email]
+    admin_alias_set = {email.lower() for email in admin_aliases}
 
-    try:
-        payload = LoginPayload(email=raw_email, password=password)
-    except ValidationError:
+    normalized_email = raw_email.lower()
+    candidate_emails = []
+
+    if normalized_email == "admin" or normalized_email in admin_alias_set:
+        candidate_emails.extend(admin_aliases)
+    else:
+        candidate_emails.append(raw_email)
+
+    validated_emails = []
+    for email in candidate_emails:
+        try:
+            validated_emails.append(LoginPayload(email=email, password=password).email)
+        except ValidationError:
+            continue
+
+    if not validated_emails:
         return jsonify({"ok": False, "error": "Invalid credentials"}), 401
 
-    user = user_store.authenticate(payload.email, payload.password)
+    user = None
+    for email in validated_emails:
+        user = user_store.authenticate(email, password)
+        if user:
+            break
 
     if not user:
         return jsonify({"ok": False, "error": "Invalid credentials"}), 401
