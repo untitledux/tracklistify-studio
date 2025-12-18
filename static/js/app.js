@@ -303,6 +303,7 @@ document.addEventListener('alpine:init', () => {
         // =====================================================================
         sets: [], 
         filteredSets: [], 
+        folders: [],
         search: '',
         activeSet: null, 
         tracks: [],
@@ -378,8 +379,8 @@ document.addEventListener('alpine:init', () => {
             playingId: null, 
             loadingId: null,
             hoverTrackId: null,
-            contextMenu: { show: false, x: 0, y: 0, target: null, type: null },
-            trackViewOnly: false
+            contextMenu: { show: false, x: 0, y: 0, type: null, target: null, folderTarget: null },
+            detailPanel: { show: false, type: null, item: null }
         },
         audioController: null,
         
@@ -658,84 +659,41 @@ document.addEventListener('alpine:init', () => {
         },
 
         // Context Menu
+        openContextMenu(e, payload = {}) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            const { type = null, item = null, folderTarget = null } = payload;
+
+            let x = e ? e.clientX : 0;
+            let y = e ? e.clientY : 0;
+            if (y > window.innerHeight - 240) y = Math.max(16, y - 200); // Overflow prevent
+
+            this.ui.contextMenu = {
+                show: true,
+                x,
+                y,
+                type,
+                target: item,
+                folderTarget
+            };
+        },
+
         openSetContextMenu(e, set) {
-            this.openContextMenu(e, 'set', set);
-        },
-
-        openFolderContextMenu(e, folder) {
-            this.openContextMenu(e, 'folder', folder);
-        },
-
-        openContextMenu(event, type, target) {
-            event.preventDefault();
-            event.stopPropagation();
-            this.ui.contextMenu.target = target;
-            this.ui.contextMenu.type = type;
-            this.ui.contextMenu.x = event.clientX;
-            this.ui.contextMenu.y = event.clientY;
-            this.ui.contextMenu.show = true;
-
-            this.$nextTick(() => this.positionContextMenu());
-        },
-
-        positionContextMenu() {
-            if (!this.ui.contextMenu.show) return;
-            const menu = this.$refs.contextMenu;
-            if (!menu) return;
-
-            const rect = menu.getBoundingClientRect();
-            const margin = 8;
-            let nextX = this.ui.contextMenu.x;
-            let nextY = this.ui.contextMenu.y;
-
-            if (nextX + rect.width + margin > window.innerWidth) {
-                nextX = Math.max(margin, window.innerWidth - rect.width - margin);
-            }
-            if (nextY + rect.height + margin > window.innerHeight) {
-                nextY = Math.max(margin, window.innerHeight - rect.height - margin);
-            }
-
-            this.ui.contextMenu.x = nextX;
-            this.ui.contextMenu.y = nextY;
-        },
-
-        handleContextMenuOutside(event) {
-            if (!this.ui.contextMenu.show) return;
-            const menu = this.$refs.contextMenu;
-            if (menu && menu.contains(event.target)) return;
-            this.closeContextMenu();
+            this.openContextMenu(e, { type: 'set', item: set });
         },
 
         closeContextMenu() {
             this.ui.contextMenu.show = false;
-            this.ui.contextMenu.target = null;
-            this.ui.contextMenu.type = null;
-        },
-
-        handleContextAction(action) {
-            const { type, target } = this.ui.contextMenu;
-            if (!target || !type) return;
-            this.closeContextMenu();
-
-            if (type === 'set') {
-                if (action === 'edit') return this.openEditSetModal(target);
-                if (action === 'rename') return this.promptRenameSet(target);
-                if (action === 'move') return this.promptMoveSet(target);
-                if (action === 'rescan') return this.rescanSetContext(target);
-                if (action === 'delete') return this.confirmAndDeleteSet(target);
-            }
-
-            if (type === 'folder') {
-                if (action === 'rename') return this.renameFolderContext(target);
-                if (action === 'delete') return this.deleteFolderContext(target);
-            }
         },
 
         // Edit Modal
-        openEditSetModal(target = null) {
-            const set = target || this.ui.contextMenu.target;
+        openEditSetModal() {
+            const set = this.ui.contextMenu.target;
+            if (!set || this.ui.contextMenu.type !== 'set') return;
             this.closeContextMenu();
-            if (!set) return;
             this.editSetData = { 
                 id: set.id, 
                 name: set.name, 
@@ -762,52 +720,10 @@ document.addEventListener('alpine:init', () => {
             this.showToast("Änderungen gespeichert.", "", "success");
         },
 
-        async promptRenameSet(set = this.ui.contextMenu.target) {
-            if (!set) return;
-            const n = prompt("Neuer Name für das Set:", set.name);
-            if(!n || n === set.name) return;
-
-            await fetch(`/api/sets/${set.id}/rename`, { 
-                method: 'POST', body: JSON.stringify({name: n}) 
-            }); 
-            this.fetchSets(); 
-            if(this.activeSet && this.activeSet.id === set.id) this.activeSet.name = n;
-        },
-
-        async deleteSet(set, options = {}) {
-            const target = set && set.id ? set : this.sets.find(s => s.id === set);
-            if (!target) return false;
-
-            const { prompt = false } = options;
-            if (prompt && !confirm(`Set "${target.name || target.id}" wirklich löschen?`)) return false;
-
-            await fetch(`/api/sets/${target.id}`, { method: 'DELETE' });
-            this.sets = this.sets.filter(s => s.id !== target.id);
-            this.filteredSets = this.filteredSets.filter(s => s.id !== target.id);
-            this.folders = (this.folders || []).map(folder => ({
-                ...folder,
-                sets: (folder.sets || []).filter(id => id !== target.id)
-            }));
-            this.persistFoldersLocally();
-
-            if (this.activeSet && this.activeSet.id === target.id) {
-                this.activeSet = null;
-                this.tracks = [];
-                this.ui.trackViewOnly = false;
-            }
-
-            this.syncFolderAssignments();
-            this.showDashboard();
-            return true;
-        },
-
-        async deleteSetContext(set = this.ui.contextMenu.target) {
-            this.closeContextMenu();
-            await this.confirmAndDeleteSet(set);
-        },
-
-        async rescanSetContext(set = this.ui.contextMenu.target) {
-            if (!set) return;
+        async rescanSetContext() {
+            const set = this.ui.contextMenu.target; 
+            if (!set || this.ui.contextMenu.type !== 'set') return;
+            this.closeContextMenu(); 
             const val = set.audio_file || set.source_url; 
             
             if(!val) return alert("Keine Audio-Datei oder URL hinterlegt.");
@@ -830,41 +746,93 @@ document.addEventListener('alpine:init', () => {
             this.showToast("Set zur Warteschlange hinzugefügt.", "", "info");
         },
 
-        async moveSetToFolderFromMenu(folder) {
-            const set = this.ui.contextMenu.target;
+        async renameItem() {
+            const { type, target } = this.ui.contextMenu;
+            if (!target || !type) return;
             this.closeContextMenu();
-            if (!set || !folder) return;
-            await this.assignSetToFolder(set, folder);
-        },
 
-        promptMoveSet(set = this.ui.contextMenu.target) {
-            if (!set) return;
-            if (!this.folders.length) {
-                this.showToast('Keine Ordner', 'Lege zuerst einen Ordner an.', 'info');
+            if (type === 'set') {
+                const nextName = prompt("Neuer Name für das Set:", target.name);
+                if (!nextName || nextName === target.name) return;
+                await fetch(`/api/sets/${target.id}/rename`, {
+                    method: 'POST',
+                    body: JSON.stringify({ name: nextName })
+                });
+                this.fetchSets();
+                if (this.activeSet && this.activeSet.id === target.id) this.activeSet.name = nextName;
                 return;
             }
 
-            const name = prompt('Set in welchen Ordner verschieben?', this.folders[0].name);
-            const folder = this.folders.find(f => f.name.toLowerCase() === (name || '').toLowerCase());
-            if (folder) this.assignSetToFolder(set, folder);
+            if (type === 'track') {
+                const nextTitle = prompt("Neuer Titel für den Track:", target.title || target.name || '');
+                if (!nextTitle || nextTitle === target.title) return;
+                await fetch(`/api/tracks/${target.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: nextTitle })
+                });
+                const track = this.tracks.find(t => t.id === target.id);
+                if (track) track.title = nextTitle;
+                this.likedTracks = this.likedTracks.map(t => t.id === target.id ? { ...t, title: nextTitle } : t);
+            }
         },
 
-        async confirmAndDeleteSet(set, message) {
-            if (!set) return false;
-            const confirmMessage = message || `Set "${set.name}" wirklich löschen?`;
-            const confirmed = confirm(confirmMessage);
-            if (!confirmed) return false;
+        async deleteItem() {
+            const { type, target } = this.ui.contextMenu;
+            if (!target || !type) return;
+            this.closeContextMenu();
 
-            await fetch(`/api/sets/${set.id}`, { method: 'DELETE' });
-            this.sets = this.sets.filter(s => s.id !== set.id);
-            this.filteredSets = this.filteredSets.filter(s => s.id !== set.id);
-            this.removeSetFromFolders(set.id);
-            if (this.activeSet && this.activeSet.id === set.id) {
-                this.activeSet = null;
-                this.tracks = [];
+            if (type === 'set') {
+                if (!confirm(`Set "${target.name}" wirklich löschen?`)) return;
+                await fetch(`/api/sets/${target.id}`, { method: 'DELETE' });
+                this.sets = this.sets.filter(s => s.id !== target.id);
+                this.filteredSets = this.filteredSets.filter(s => s.id !== target.id);
+                if (this.activeSet && this.activeSet.id === target.id) {
+                    this.activeSet = null;
+                    this.tracks = [];
+                }
+                this.showDashboard();
+                return;
             }
-            this.showDashboard();
-            return true;
+
+            if (type === 'track') {
+                if (!confirm(`Track "${target.title || target.name}" löschen?`)) return;
+                await fetch(`/api/tracks/${target.id}`, { method: 'DELETE' });
+                this.tracks = this.tracks.filter(t => t.id !== target.id);
+                this.likedTracks = this.likedTracks.filter(t => t.id !== target.id);
+                this.purchasedTracks = this.purchasedTracks.filter(t => t.id !== target.id);
+
+                if (this.activeSet && this.activeSet.track_count !== undefined && this.activeSet.track_count > 0) {
+                    this.activeSet.track_count -= 1;
+                }
+                const idx = this.sets.findIndex(s => this.activeSet && s.id === this.activeSet.id);
+                if (idx >= 0 && this.sets[idx].track_count > 0) {
+                    this.sets[idx].track_count -= 1;
+                    this.filteredSets = [...this.sets];
+                }
+            }
+        },
+
+        moveItemToFolder(folder) {
+            const { target, type } = this.ui.contextMenu;
+            if (!target || !type) return;
+            this.ui.contextMenu.folderTarget = folder;
+            this.closeContextMenu();
+            target.folder = folder;
+            const label = type === 'set' ? target.name : (target.title || target.name || 'Track');
+            this.showToast('Verschoben', `${label} -> ${folder.name || folder}`, 'info');
+        },
+
+        showDetails(item = null, type = null) {
+            const detailItem = item || this.ui.contextMenu.target;
+            const detailType = type || this.ui.contextMenu.type;
+            if (!detailItem || !detailType) return;
+            this.closeContextMenu();
+            this.ui.detailPanel = { show: true, type: detailType, item: detailItem };
+        },
+
+        closeDetailPanel() {
+            this.ui.detailPanel = { show: false, type: null, item: null };
         },
 
         // =====================================================================
@@ -979,12 +947,7 @@ document.addEventListener('alpine:init', () => {
         // TRACK ACTIONS & API FETCHERS
         // =====================================================================
         async fetchDashboard() { const res = await fetch('/api/dashboard'); this.dashboardStats = await res.json(); },
-        async fetchSets() { 
-            const res = await fetch('/api/sets'); 
-            this.sets = await res.json(); 
-            this.syncFolderAssignments(); 
-            this.updateFilteredSets();
-        },
+        async fetchSets() { const res = await fetch('/api/sets'); this.sets = await res.json(); this.filteredSets = this.sets; this.deriveFoldersFromSets(); },
         async fetchLikes() { const res = await fetch('/api/tracks/likes'); this.likedTracks = await res.json(); },
         async fetchPurchases() { const res = await fetch('/api/tracks/purchases'); this.purchasedTracks = await res.json(); },
         async fetchProducerLikes() { const res = await fetch('/api/producers/likes'); this.favoriteProducers = await res.json(); },
@@ -1008,88 +971,83 @@ document.addEventListener('alpine:init', () => {
         async fetchYoutube(artists = [], query = '') {
             const artistList = artists.length ? artists : this.deriveYoutubeArtists(query);
 
-        const response = await fetch(url, config);
-        if (!response.ok) {
-            const text = await response.text();
-            throw new Error(text || `Request failed: ${response.status}`);
-        }
-        try {
-            return await response.json();
-        } catch (e) {
-            return null;
-        }
-    }
+            if (!artistList.length) {
+                this.youtubeFeed = [];
+                return;
+            }
 
-    getSets() {
-        return this.request('/sets');
-    }
+            const params = new URLSearchParams();
+            params.set('artists', artistList.join(','));
+            if (query) params.set('q', query);
 
-    getTracks(setId) {
-        return this.request(`/sets/${setId}/tracks`);
-    }
+            try {
+                const res = await fetch(`/api/youtube/feeds?${params.toString()}`);
+                const data = await res.json();
+                if (res.ok && data.ok) {
+                    this.youtubeFeed = data.items || [];
+                } else {
+                    this.youtubeFeed = [];
+                    if (data.error) this.showToast('YouTube Feed', data.error, 'warning');
+                }
+            } catch (e) {
+                this.youtubeFeed = [];
+            }
+        },
+        async refreshEngagementFeeds(query = '') {
+            await Promise.all([
+                this.fetchDashboard(),
+                this.fetchYoutube([], query)
+            ]);
+        },
 
-    getDashboard() {
-        return this.request('/dashboard');
-    }
+        deriveFoldersFromSets() {
+            const folderNames = new Set();
+            this.sets.forEach(set => {
+                if (set.tags) {
+                    set.tags.split(',')
+                        .map(t => t.trim())
+                        .filter(Boolean)
+                        .forEach(name => folderNames.add(name));
+                }
+            });
+            this.folders = Array.from(folderNames).map(name => ({ id: name.toLowerCase().replace(/\s+/g, '-'), name }));
+        },
 
-    getFolders() {
-        return this.request('/folders');
-    }
-
-    createFolder(name) {
-        return this.request('/folders', {
-            method: 'POST',
-            body: JSON.stringify({ name })
-        });
-    }
-
-    assignSetToFolder(folderId, setId) {
-        return this.request(`/folders/${folderId}/sets`, {
-            method: 'POST',
-            body: JSON.stringify({ set_id: setId })
-        });
-    }
-
-    deleteSet(setId) {
-        return this.request(`/sets/${setId}`, { method: 'DELETE' });
-    }
-
-    resolveMetadata(url) {
-        return this.request('/resolve_metadata', {
-            method: 'POST',
-            body: JSON.stringify({ url })
-        });
-    }
-
-    addToQueue(formData) {
-        return this.request('/queue/add', {
-            method: 'POST',
-            body: formData
-        });
-    }
-}
-
-class AudioController {
-    constructor(element) {
-        this.audio = element;
-        this.currentTrack = null;
-        this.bindEvents();
-    }
-
-    bindEvents() {
-        this.audio.addEventListener('ended', () => {
-            this.currentTrack = null;
-        });
-    }
-
-    async play(source) {
-        if (!source) return;
-        if (this.audio.src !== source) {
-            this.audio.src = source;
-        }
-        this.currentTrack = source;
-        await this.audio.play();
-    }
+        async fetchProfile() {
+            try {
+                const res = await fetch('/api/auth/profile');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.ok) this.auth.user = data.user;
+                } else if (res.status === 401) {
+                    this.auth.user = null;
+                }
+            } catch(e) {}
+        },
+        async submitAuth() {
+            const url = this.auth.mode === 'login' ? '/api/auth/login' : '/api/auth/register';
+            this.auth.error = '';
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.auth.form)
+            });
+            const data = await res.json();
+            if (res.ok && data.ok) {
+                this.auth.user = data.user;
+                this.auth.form = { email: '', password: '', name: '' };
+                this.auth.dropdownOpen = false;
+                const name = data.user.name || data.user.dj_name || data.user.email;
+                this.showToast('Angemeldet', name, 'info');
+            } else {
+                this.auth.error = data.error || 'Fehler';
+            }
+        },
+        async logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            this.auth.user = null;
+            this.auth.dropdownOpen = false;
+        },
 
     toggle(source) {
         if (this.currentTrack === source && !this.audio.paused) {

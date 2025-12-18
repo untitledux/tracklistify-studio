@@ -392,63 +392,39 @@ def update_set_metadata(set_id, data):
     conn.commit()
     conn.close()
 
-def get_folders_with_sets():
+
+def update_track_metadata(track_id, data):
+    if not track_id:
+        return 0
+
+    allowed_fields = {
+        "title": "title",
+        "artist": "artist",
+        "position": "position",
+        "start_time": "start_time",
+        "end_time": "end_time"
+    }
+
+    updates = []
+    values = []
+
+    for key, column in allowed_fields.items():
+        if key in data:
+            updates.append(f"{column} = ?")
+            values.append(data.get(key))
+
+    if not updates:
+        return 0
+
+    values.append(track_id)
+
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT id, name, created_at FROM folders ORDER BY created_at DESC")
-    folders = [dict(r) for r in cur.fetchall()]
-    cur.execute("SELECT folder_id, set_id FROM folder_sets")
-    mapping = cur.fetchall()
-    conn.close()
-
-    sets_by_folder = {}
-    for row in mapping:
-        fid = row["folder_id"]
-        sets_by_folder.setdefault(fid, []).append(row["set_id"])
-
-    for folder in folders:
-        folder["sets"] = sets_by_folder.get(folder["id"], [])
-    return folders
-
-def create_folder(name: str):
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO folders (name) VALUES (?)",
-        (name.strip(),),
-    )
+    cur.execute(f"UPDATE tracks SET {', '.join(updates)} WHERE id = ?", tuple(values))
     conn.commit()
-    folder_id = cur.lastrowid
-    cur.execute("SELECT id, name, created_at FROM folders WHERE id = ?", (folder_id,))
-    row = cur.fetchone()
+    updated = cur.rowcount
     conn.close()
-    folder_data = dict(row) if row else {"id": folder_id, "name": name, "created_at": None}
-    folder_data["sets"] = []
-    return folder_data
-
-def assign_set_to_folder(folder_id: int, set_id: int):
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM folder_sets WHERE set_id = ?", (set_id,))
-    cur.execute(
-        """
-        INSERT OR IGNORE INTO folder_sets (folder_id, set_id)
-        VALUES (?, ?)
-        """,
-        (folder_id, set_id),
-    )
-    conn.commit()
-    conn.close()
-
-def remove_set_from_folder(folder_id: int, set_id: int):
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute(
-        "DELETE FROM folder_sets WHERE folder_id = ? AND set_id = ?",
-        (folder_id, set_id),
-    )
-    conn.commit()
-    conn.close()
+    return updated
 
 # --- Bestehende Queries (Kurzform der Vollständigkeit halber) ---
 def get_all_sets():
