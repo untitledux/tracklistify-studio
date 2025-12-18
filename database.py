@@ -223,7 +223,8 @@ def init_db():
         "tags": "TEXT",
         "dj_id": "INTEGER",
         "soundcloud_url": "TEXT",
-        "label_id": "INTEGER"
+        "label_id": "INTEGER",
+        "thumbnail_url": "TEXT"
     }
 
     for col, dtype in new_set_cols.items():
@@ -431,7 +432,9 @@ def get_all_sets():
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("""
-        SELECT s.*, COUNT(t.id) as track_count,
+        SELECT s.*, 
+               COALESCE(s.thumbnail_url, MAX(d.image_url)) AS thumbnail_url,
+               COUNT(t.id) as track_count,
                GROUP_CONCAT(DISTINCT d.name) as dj_names,
                l.name AS label_name,
                MAX(fs.folder_id) as folder_id
