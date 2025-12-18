@@ -21,17 +21,26 @@
     <script src="/static/js/app.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; letter-spacing: 0.05em; text-transform: uppercase; }
+        body { font-family: 'Inter', sans-serif; letter-spacing: 0.05em; text-transform: uppercase; background: radial-gradient(circle at 20% 20%, #f7f9ff, #e9eef8 35%, #d9dfec 80%); }
         [x-cloak] { display: none !important; }
         *, *:focus { border-radius: 0 !important; box-shadow: none !important; }
         .avatar-ring { border-radius: 9999px !important; border: 2px solid #0f172a; }
         .mono-card { border: 1px solid #0f172a; background: #f8fafc; }
         .grid-icon span { width: 6px; height: 6px; background: #0f172a; display: block; }
+
+        /* Glassmorphism + contrast accents */
+        .glass-panel { background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(15, 23, 42, 0.08); box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12); }
+        .glass-strong { background: rgba(255, 255, 255, 0.82); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid rgba(15, 23, 42, 0.12); box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16); }
+        .dark-chip { background: #0f172a; color: #fff; border: 1px solid #0f172a; box-shadow: 0 6px 18px rgba(15, 23, 42, 0.28); }
+        .nav-button { transition: all 0.2s ease; }
+        .nav-button:hover { transform: translateY(-1px); }
+        .contrast-active { background: #0f172a; color: #fff !important; border-color: #0f172a; }
+        .contrast-active svg { color: #fff; }
     </style>
 </head>
 <body class="h-full flex flex-col text-gray-900" x-data="tracklistify()">
-<div class="flex flex-1 min-h-screen border border-gray-900">
-    <aside class="w-72 border-r border-gray-900 flex flex-col bg-gray-100/80">
+<div class="flex flex-1 min-h-screen border border-gray-900/20 glass-strong">
+    <aside class="w-72 border-r border-gray-200 flex flex-col bg-white/40 backdrop-blur-lg">
         <div class="p-4 border-b border-gray-900 flex items-center justify-between">
             <div class="flex flex-col leading-none">
                 <span class="text-[11px] font-bold tracking-[0.3em]">TRACKLISTIFY</span>
@@ -40,26 +49,29 @@
             <button @click="showDashboard" class="p-2 border border-gray-900 text-[11px] font-bold">HOME</button>
         </div>
 
-        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-900 gap-2">
-            <button @click="ui.showAddModal = true" class="flex-1 px-3 py-2 border border-gray-900 text-[11px] font-bold">ADD SET</button>
-            <button @click="openAdmin" class="p-2 border border-gray-900 grid grid-cols-2 gap-0.5 grid-icon" title="Admin">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 gap-2">
+            <button @click="ui.showAddModal = true" class="flex-1 px-3 py-2 border border-gray-900 text-[11px] font-bold glass-panel">ADD SET</button>
+            <button @click="openAdmin" class="p-2 border border-gray-900 grid grid-cols-2 gap-0.5 grid-icon glass-panel" title="Admin">
                 <span></span><span></span><span></span><span></span>
             </button>
         </div>
 
-        <div class="px-4 py-3 border-b border-gray-900">
+        <div class="px-4 py-3 border-b border-gray-200">
             <div class="relative">
-                <input type="text" x-model="search" placeholder="FILTER SETS" class="w-full px-3 py-2 border border-gray-900 bg-white text-[11px] font-bold">
+                <input type="text" x-model="search" placeholder="FILTER SETS" class="w-full px-3 py-2 border border-gray-200 bg-white/70 text-[11px] font-bold rounded-lg focus:border-gray-900 focus:ring-1 focus:ring-gray-900/40">
             </div>
         </div>
 
         <div class="flex-1 overflow-y-auto divide-y divide-gray-200">
             <template x-for="set in filteredSets" :key="set.id">
-                <button @click="loadSet(set)" class="w-full text-left px-4 py-3 border-b border-gray-200 last:border-b-0 hover:bg-gray-200/60"
-                        :class="activeSet && activeSet.id === set.id ? 'bg-gray-900 text-white' : ''">
-                    <div class="flex items-center justify-between text-[12px] font-bold">
-                        <span class="truncate" x-text="set.name"></span>
-                        <span class="font-mono" x-text="set.track_count"></span>
+                <button @click="loadSet(set)" class="w-full text-left px-4 py-3 border-b border-gray-200 last:border-b-0 hover:bg-gray-200/60 transition-all duration-150"
+                        :class="activeSet && activeSet.id === set.id ? 'contrast-active rounded-lg shadow-md' : 'rounded-lg'">
+                    <div class="flex items-center justify-between text-[12px] font-bold gap-2">
+                        <div class="flex items-center gap-2 truncate">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-2v13" /></svg>
+                            <span class="truncate" x-text="set.name"></span>
+                        </div>
+                        <span class="font-mono px-2 py-0.5 rounded-md" :class="activeSet && activeSet.id === set.id ? 'bg-white/10' : 'bg-gray-100 text-gray-600'" x-text="set.track_count"></span>
                     </div>
                     <div class="text-[10px] text-gray-500" x-text="formatDate(set.created_at)"></div>
                 </button>
@@ -67,17 +79,17 @@
             <div x-show="sets.length === 0" class="px-4 py-6 text-[12px] text-gray-500">NO SETS YET</div>
         </div>
 
-        <div class="border-t border-gray-900 p-4 flex items-center gap-3">
+        <div class="border-t border-gray-200 p-4 flex items-center gap-3 glass-panel">
             <div class="w-12 h-12 avatar-ring overflow-hidden bg-white flex items-center justify-center">
                 <template x-if="profile.avatar_url">
                     <img :src="profile.avatar_url" alt="Avatar" class="w-full h-full object-cover rounded-full">
                 </template>
                 <template x-if="!profile.avatar_url">
-                    <span class="text-sm font-bold" x-text="(profile.display_name || auth.username || 'DJ')[0]"></span>
+                    <span class="text-sm font-bold" x-text="(profile.display_name || (auth.user ? (auth.user.name || auth.user.dj_name || auth.user.email) : 'DJ'))[0]"></span>
                 </template>
             </div>
             <div class="flex-1 leading-tight">
-                <div class="text-[12px] font-bold" x-text="profile.display_name || auth.username || 'GUEST'"></div>
+                <div class="text-[12px] font-bold" x-text="profile.display_name || (auth.user ? (auth.user.name || auth.user.dj_name || auth.user.email) : 'GUEST')"></div>
                 <div class="text-[10px] text-gray-500 flex items-center gap-2">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 14.5l8-5v10l-8-5z"/></svg>
                     <span x-text="profile.dj_name || 'NO DJ NAME'"></span>
@@ -92,42 +104,88 @@
     </aside>
 
     <div class="flex-1 flex flex-col min-w-0">
-        <header class="border-b border-gray-900 px-6 py-4 flex items-center justify-between">
+        <header class="border-b border-gray-200 px-6 py-4 flex items-center justify-between glass-panel">
             <div class="flex gap-2 text-[11px] font-bold">
-                <button @click="showDashboard" :class="currentView === 'dashboard' ? 'border-b-2 border-gray-900' : ''" class="px-3 py-2">DASHBOARD</button>
-                <button @click="currentView='sets'" :class="currentView === 'sets' ? 'border-b-2 border-gray-900' : ''" class="px-3 py-2">SETS</button>
-                <button @click="showQueueView" :class="currentView === 'queue' ? 'border-b-2 border-gray-900' : ''" class="px-3 py-2">QUEUE</button>
-                <button @click="showRescanView" :class="currentView === 'rescan' ? 'border-b-2 border-gray-900' : ''" class="px-3 py-2">RESCAN</button>
-                <button @click="showCollections" :class="currentView === 'collections' ? 'border-b-2 border-gray-900' : ''" class="px-3 py-2">COLLECTIONS</button>
+                <button @click="showDashboard" :class="currentView === 'dashboard' ? 'contrast-active' : 'bg-white/70 border-gray-200'" class="px-3 py-2 nav-button border flex items-center gap-2 rounded-lg">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0h6"/></svg>
+                    DASHBOARD
+                </button>
+                <button @click="currentView='sets'" :class="currentView === 'sets' ? 'contrast-active' : 'bg-white/70 border-gray-200'" class="px-3 py-2 nav-button border flex items-center gap-2 rounded-lg">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-2v13M3 7h3M3 12h3M3 17h3"/></svg>
+                    SETS
+                </button>
+                <button @click="showQueueView" :class="currentView === 'queue' ? 'contrast-active' : 'bg-white/70 border-gray-200'" class="px-3 py-2 nav-button border flex items-center gap-2 rounded-lg">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8h18M3 16h18M7 4v4m0 8v4"/></svg>
+                    QUEUE
+                </button>
+                <button @click="showRescanView" :class="currentView === 'rescan' ? 'contrast-active' : 'bg-white/70 border-gray-200'" class="px-3 py-2 nav-button border flex items-center gap-2 rounded-lg">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    RESCAN
+                </button>
+                <button @click="showCollections" :class="currentView === 'collections' ? 'contrast-active' : 'bg-white/70 border-gray-200'" class="px-3 py-2 nav-button border flex items-center gap-2 rounded-lg">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 12h14M5 16h14"/></svg>
+                    COLLECTIONS
+                </button>
             </div>
             <div class="flex items-center gap-3 text-[11px] font-bold">
-                <span class="px-2 py-1 border border-gray-900" x-text="auth.username ? 'SIGNED IN' : 'GUEST'"></span>
-                <button @click="logout" class="px-2 py-1 border border-gray-900" x-show="auth.username">LOGOUT</button>
-                <a href="/login" class="px-2 py-1 border border-gray-900" x-show="!auth.username">LOGIN</a>
+                <span class="px-2 py-1 border border-gray-900/40 glass-panel text-gray-700" x-text="auth.user ? 'SIGNED IN' : 'GUEST'"></span>
+
+                <template x-if="auth.user">
+                    <div class="relative" @click.outside="auth.dropdownOpen = false">
+                        <button @click="auth.dropdownOpen = !auth.dropdownOpen" class="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-full bg-white/70 shadow-sm hover:shadow-md transition-all">
+                            <div class="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center uppercase" x-text="(auth.user.name || auth.user.dj_name || auth.user.email)[0]"></div>
+                            <div class="hidden sm:flex flex-col leading-none text-left">
+                                <span class="text-xs font-semibold text-gray-800" x-text="auth.user.name || auth.user.dj_name || auth.user.email"></span>
+                                <span class="text-[10px] text-gray-500">Profile</span>
+                            </div>
+                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div x-show="auth.dropdownOpen" x-transition class="absolute right-0 mt-2 w-56 rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden z-30">
+                            <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                                <p class="text-[10px] text-gray-500">Signed in as</p>
+                                <p class="text-sm font-semibold text-gray-800" x-text="auth.user.name || auth.user.dj_name || auth.user.email"></p>
+                            </div>
+                            <nav class="p-2 flex flex-col gap-1">
+                                <a href="/profile" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 text-sm text-gray-700">
+                                    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A10 10 0 1118.88 17.8 7 7 0 005 17.8z"/></svg>
+                                    Profile
+                                </a>
+                                <button class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50 text-sm text-red-600 text-left" @click="logout()">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 11-4 0v-1m4-10V5a2 2 0 10-4 0v1"/></svg>
+                                    Logout
+                                </button>
+                            </nav>
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="!auth.user">
+                    <a href="/login" class="px-3 py-2 border border-gray-900 rounded-full dark-chip shadow-lg hover:shadow-xl transition-all">LOGIN</a>
+                </template>
             </div>
         </header>
 
-        <div class="flex-1 overflow-auto bg-white">
+        <div class="flex-1 overflow-auto bg-white/50">
             <section x-show="currentView === 'dashboard'" class="p-6 space-y-4" x-cloak>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="mono-card p-4 flex flex-col gap-2">
+                    <div class="mono-card glass-panel p-4 flex flex-col gap-2">
                         <span class="text-[10px] font-bold">SETS</span>
                         <span class="text-2xl font-bold" x-text="dashboardStats.total_sets"></span>
                     </div>
-                    <div class="mono-card p-4 flex flex-col gap-2">
+                    <div class="mono-card glass-panel p-4 flex flex-col gap-2">
                         <span class="text-[10px] font-bold">TRACKS</span>
                         <span class="text-2xl font-bold" x-text="dashboardStats.total_tracks"></span>
                     </div>
-                    <div class="mono-card p-4 flex flex-col gap-2">
+                    <div class="mono-card glass-panel p-4 flex flex-col gap-2">
                         <span class="text-[10px] font-bold">LIKES</span>
                         <span class="text-2xl font-bold" x-text="dashboardStats.total_likes"></span>
                     </div>
-                    <div class="mono-card p-4 flex flex-col gap-2">
+                    <div class="mono-card glass-panel p-4 flex flex-col gap-2">
                         <span class="text-[10px] font-bold">DISCOVERY</span>
                         <span class="text-2xl font-bold" x-text="dashboardStats.discovery_rate + '%' "></span>
                     </div>
                 </div>
-                <div class="mono-card p-4">
+                <div class="mono-card glass-panel p-4">
                     <div class="text-[10px] font-bold mb-2">RECENT SETS</div>
                     <div class="divide-y divide-gray-200">
                         <template x-for="item in dashboardStats.recent_sets" :key="item.id">
@@ -144,18 +202,18 @@
             </section>
 
             <section x-show="currentView === 'sets'" class="flex flex-col h-full" x-cloak>
-                <div class="border-b border-gray-900 px-6 py-3 flex items-center justify-between">
+                <div class="border-b border-gray-200 px-6 py-3 flex items-center justify-between glass-panel">
                     <div class="flex flex-col">
                         <span class="text-sm font-bold" x-text="activeSet ? activeSet.name : 'SELECT A SET'"></span>
                         <span class="text-[10px] text-gray-500" x-show="activeSet" x-text="tracks.length + ' TRACKS'"></span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button @click="copyTracklist" class="px-3 py-2 border border-gray-900 text-[11px] font-bold" x-show="activeSet">COPY LIST</button>
+                        <button @click="copyTracklist" class="px-3 py-2 border border-gray-900 text-[11px] font-bold glass-panel" x-show="activeSet">COPY LIST</button>
                     </div>
                 </div>
-                <div class="flex-1 overflow-auto">
+                <div class="flex-1 overflow-auto bg-white/40">
                     <table class="w-full text-xs">
-                        <thead class="bg-gray-100 border-b border-gray-900">
+                        <thead class="bg-gray-100/70 border-b border-gray-200 backdrop-blur">
                             <tr>
                                 <th class="px-2 py-2 border-r border-gray-200 w-10">#</th>
                                 <th class="px-2 py-2 border-r border-gray-200 w-16">PLAY</th>
@@ -167,9 +225,9 @@
                                 <th class="px-2 py-2 w-12 text-center">FAV</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="bg-white/70">
                             <template x-for="(track, index) in tracks" :key="track.id">
-                                <tr class="border-b border-gray-200">
+                                <tr class="border-b border-gray-100 hover:bg-gray-100/60 transition-colors">
                                     <td class="px-2 py-3 text-center">
                                         <button @click.stop="toggleFlag(track)" class="text-[11px] font-bold" :class="track.flag === 3 ? 'text-red-600' : ''" x-text="track.flag === 3 ? '???' : track.position"></button>
                                     </td>
@@ -183,8 +241,11 @@
                                     <td class="px-2 py-3 text-right font-mono" x-text="formatTime(track.start_time)"></td>
                                     <td class="px-4 py-3">
                                         <div class="flex flex-col gap-1">
-                                            <span class="text-sm font-bold" x-text="track.title || 'UNKNOWN'"></span>
-                                            <span class="text-[11px] text-gray-600" x-text="track.artist || 'UNKNOWN'"></span>
+                                            <div class="flex items-baseline gap-2">
+                                                <svg class="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-2v13M5 7h2m-2 5h2m-2 5h2"/></svg>
+                                                <span class="text-sm font-bold" x-text="track.title || 'UNKNOWN'"></span>
+                                                <span class="text-[11px] text-gray-600" x-text="track.artist || 'UNKNOWN'"></span>
+                                            </div>
                                         </div>
                                     </td>
                                     <td class="px-2 py-3 text-right text-[10px] font-bold" x-text="formatConf(track.confidence)"></td>
