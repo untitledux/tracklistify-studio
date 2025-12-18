@@ -1041,6 +1041,11 @@ const registerTracklistify = (AlpineInstance) => {
                     this.updateFoldersFromServer(payload);
                     return;
                 }
+
+                this.ensureFolderStructure();
+                this.syncFolderAssignments();
+                this.resetFolderForm();
+                return;
             } catch (e) {}
 
             const cached = localStorage.getItem('tracklistify_folders');
