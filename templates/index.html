@@ -93,6 +93,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
             <span>Trash Zone</span>
         </div>
+        <div class="flex-1 overflow-y-auto" id="sets-list"></div>
     </aside>
 
     <main class="main-content">
@@ -517,8 +518,8 @@
             </div>
         </div>
         <div class="modal-actions">
-            <button class="ghost-button" @click="ui.showProfileModal = false">Cancel</button>
-            <button class="cta" @click="saveProfile">Save</button>
+            <button class="ghost-button" data-action="close-upload">Cancel</button>
+            <button class="cta" data-action="submit-upload">Start</button>
         </div>
     </div>
 </div>
