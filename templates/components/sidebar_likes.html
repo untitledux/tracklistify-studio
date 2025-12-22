@@ -19,13 +19,20 @@
                 <div class="font-bold text-sm text-gray-800" x-text="track.title"></div>
                 <div class="text-xs text-gray-500" x-text="track.artist"></div>
                 
-                <div class="flex gap-2 mt-1">
-                    <button @click="togglePlay(track)" class="flex-1 bg-gray-50 hover:bg-orange-50 text-xs font-bold py-1.5 rounded text-gray-600 hover:text-orange-600 border border-gray-200">
+                <div class="flex flex-wrap gap-2 mt-1">
+                    <button @click="togglePlay(track)" class="flex-1 min-w-[45%] bg-gray-50 hover:bg-orange-50 text-xs font-bold py-1.5 rounded text-gray-600 hover:text-orange-600 border border-gray-200">
                         PLAY
                     </button>
-                    <a :href="track.beatport_url" target="_blank" class="flex-1 bg-teal-50 hover:bg-teal-100 text-xs font-bold py-1.5 rounded text-teal-700 border border-teal-200 text-center">
-                        BUY
+                    <a :href="track.beatport_url || getSearchLink(track, 'beatport')" target="_blank" class="flex-1 min-w-[45%] bg-teal-50 hover:bg-teal-100 text-xs font-bold py-1.5 rounded text-teal-700 border border-teal-200 text-center">
+                        BEATPORT
                     </a>
+                    <a :href="track.bandcamp_url || getSearchLink(track, 'bandcamp')" target="_blank" class="flex-1 min-w-[45%] bg-indigo-50 hover:bg-indigo-100 text-xs font-bold py-1.5 rounded text-indigo-700 border border-indigo-200 text-center">
+                        BANDCAMP
+                    </a>
+                    <button @click="togglePurchase(track)" class="flex-1 min-w-[45%] text-xs font-bold py-1.5 rounded border transition-colors"
+                            :class="track.purchased ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-gray-600 hover:text-emerald-700 border-gray-200 hover:border-emerald-200 hover:bg-emerald-50'">
+                        <span x-text="track.purchased ? 'Gekauft' : 'Als gekauft markieren'"></span>
+                    </button>
                 </div>
             </div>
         </template>
